@@ -1,7 +1,14 @@
 import { createClient } from '@vercel/kv'
 
-// same1_ 이 붙은 변수를 사용해서 DB 연결을 수동으로 설정합니다.
-export const kv = createClient({
-  url: process.env.same1_KV_REST_API_URL!,
-  token: process.env.same1_KV_REST_API_TOKEN!,
-})
+// Vercel KV 환경 변수 사용 (없으면 더미값으로 빌드 통과)
+const kvUrl = process.env.KV_REST_API_URL || process.env.same1_KV_REST_API_URL || ''
+const kvToken = process.env.KV_REST_API_TOKEN || process.env.same1_KV_REST_API_TOKEN || ''
+
+export const kv = kvUrl && kvToken 
+  ? createClient({ url: kvUrl, token: kvToken })
+  : {
+      // 더미 KV (환경 변수 없을 때 빌드 통과용)
+      get: async () => null,
+      set: async () => null,
+      del: async () => null,
+    } as any
