@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 
 interface CharacterData {
   name: string
@@ -15,6 +16,8 @@ interface CharacterData {
   job: string
   spouse: string
   child: string
+  thumbnail: string
+  standing: string
 }
 
 const manonData: CharacterData = {
@@ -30,6 +33,8 @@ const manonData: CharacterData = {
   job: '파리 오페라 발레단',
   spouse: '딜런 토리 섬너',
   child: '루드베키아 섬너',
+  thumbnail: '/manon1.png',
+  standing: '/standing-manon.png',
 }
 
 const dylanData: CharacterData = {
@@ -45,10 +50,13 @@ const dylanData: CharacterData = {
   job: '지팡이 장인 견습생',
   spouse: '마농 브레슈(섬너)',
   child: '루드베키아 섬너',
+  thumbnail: '/dylan1.png',
+  standing: '/standing-dylan.png',
 }
 
 export default function CharacterPage() {
   const [character, setCharacter] = useState<'manon' | 'dylan'>('manon')
+  const [imgError, setImgError] = useState<{[key: string]: boolean}>({})
   
   const data = character === 'manon' ? manonData : dylanData
   const isManon = character === 'manon'
@@ -61,6 +69,10 @@ export default function CharacterPage() {
 
   const accentColor = isManon ? MANON_COLOR : DYLAN_COLOR
   const accentBg = isManon ? MANON_BG : DYLAN_BG
+
+  const handleImageError = (key: string) => {
+    setImgError(prev => ({ ...prev, [key]: true }))
+  }
 
   return (
     <div className="min-h-screen bg-[#0d0d0f] pb-20 md:pb-0">
@@ -84,25 +96,51 @@ export default function CharacterPage() {
       <div className="max-w-[1100px] mx-auto px-6 py-10 relative z-10">
         
         {/* 캐릭터 선택 탭 */}
-        <div className="flex gap-1.5 mb-8 pb-4 border-b border-white/[0.06]">
+        <div className="flex gap-3 mb-8 pb-4 border-b border-white/[0.06]">
           <button
-            onClick={() => setCharacter('manon')}
-            className={`px-5 py-2.5 text-sm font-medium transition-all duration-300 rounded-lg ${
+            onClick={() => { setCharacter('manon'); setImgError({}) }}
+            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all duration-300 rounded-xl ${
               isManon
                 ? 'bg-[#ff99bb] text-black shadow-[0_0_20px_rgba(255,153,187,0.3)]'
                 : 'bg-transparent border border-white/12 text-white/45 hover:text-white/70 hover:border-white/20'
             }`}
           >
+            {/* 썸네일 */}
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/10">
+              {!imgError['manon-thumb'] ? (
+                <img 
+                  src="/manon1.png" 
+                  alt="마농"
+                  className="w-full h-full object-cover"
+                  onError={() => handleImageError('manon-thumb')}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs">🩰</div>
+              )}
+            </div>
             마농 브레슈
           </button>
           <button
-            onClick={() => setCharacter('dylan')}
-            className={`px-5 py-2.5 text-sm font-medium transition-all duration-300 rounded-lg ${
+            onClick={() => { setCharacter('dylan'); setImgError({}) }}
+            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all duration-300 rounded-xl ${
               !isManon
                 ? 'bg-[#2a2a2f] text-white border border-[#8888aa]/50 shadow-[0_0_20px_rgba(136,136,170,0.2)]'
                 : 'bg-transparent border border-white/12 text-white/45 hover:text-white/70 hover:border-white/20'
             }`}
           >
+            {/* 썸네일 */}
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/10">
+              {!imgError['dylan-thumb'] ? (
+                <img 
+                  src="/dylan1.png" 
+                  alt="딜런"
+                  className="w-full h-full object-cover"
+                  onError={() => handleImageError('dylan-thumb')}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs">✨</div>
+              )}
+            </div>
             딜런 토리 섬너
           </button>
         </div>
@@ -110,9 +148,9 @@ export default function CharacterPage() {
         {/* 프로필 레이아웃 */}
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8">
           
-          {/* 왼쪽: 캐릭터 비주얼 */}
+          {/* 왼쪽: 캐릭터 비주얼 (스탠딩 이미지) */}
           <div
-            className="relative h-[500px] border border-white/[0.05] rounded-2xl flex items-center justify-center overflow-hidden transition-all duration-500"
+            className="relative h-[550px] border border-white/[0.05] rounded-2xl flex items-center justify-center overflow-hidden transition-all duration-500"
             style={{
               background: isManon 
                 ? 'linear-gradient(to bottom, rgba(255,153,187,0.08), rgba(26,26,28,0.5))'
@@ -125,19 +163,31 @@ export default function CharacterPage() {
             <div className="absolute bottom-3 right-3 w-4 h-4 border-r border-b opacity-30 transition-colors duration-500"
               style={{ borderColor: accentColor }} />
             
-            {/* 이미지 영역 */}
-            <div className="text-center">
-              <div 
-                className="w-48 h-48 rounded-full mx-auto mb-4 flex items-center justify-center text-6xl transition-all duration-500"
-                style={{ 
-                  background: `linear-gradient(145deg, ${accentBg}, rgba(26,26,28,0.8))`,
-                  border: `1px solid ${accentColor}30`
-                }}
-              >
-                {isManon ? '🩰' : '✨'}
+            {/* 스탠딩 이미지 */}
+            {!imgError[`${character}-standing`] ? (
+              <img 
+                src={data.standing}
+                alt={data.name}
+                className="max-h-full max-w-full object-contain drop-shadow-2xl transition-all duration-500"
+                style={{ filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.6))' }}
+                onError={() => handleImageError(`${character}-standing`)}
+              />
+            ) : (
+              /* 이미지 없을 때 폴백 */
+              <div className="text-center">
+                <div 
+                  className="w-48 h-48 rounded-full mx-auto mb-4 flex items-center justify-center text-6xl transition-all duration-500"
+                  style={{ 
+                    background: `linear-gradient(145deg, ${accentBg}, rgba(26,26,28,0.8))`,
+                    border: `1px solid ${accentColor}30`
+                  }}
+                >
+                  {isManon ? '🩰' : '✨'}
+                </div>
+                <p className="text-white/30 text-sm">이미지 준비중</p>
+                <p className="text-white/20 text-xs mt-1">{data.standing}</p>
               </div>
-              <p className="text-white/30 text-sm">이미지 준비중</p>
-            </div>
+            )}
 
             {/* 하단 정보 */}
             <div className="absolute bottom-4 left-4 right-4">
@@ -166,7 +216,7 @@ export default function CharacterPage() {
 
             {/* 프로필 카드 */}
             <div 
-              className="rounded-xl p-5 border transition-all duration-500"
+              className="rounded-xl p-5 border transition-all duration-500 relative"
               style={{
                 background: `linear-gradient(135deg, ${accentBg}, transparent)`,
                 borderColor: `${accentColor}20`
@@ -174,68 +224,38 @@ export default function CharacterPage() {
             >
               {/* 장식 점 */}
               <div 
-                className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full animate-pulse"
+                className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full animate-pulse"
                 style={{ background: accentColor }}
               />
               
               <div className="grid grid-cols-[100px_1fr] gap-y-3 gap-x-4 text-sm">
-                <dt className="text-white/40 relative">
-                  출생
-                  <span className="absolute right-0 opacity-50" style={{ color: accentColor }}>·</span>
-                </dt>
+                <dt className="text-white/40">출생</dt>
                 <dd className="text-white/80">{data.birth}</dd>
                 
-                <dt className="text-white/40 relative">
-                  성별
-                  <span className="absolute right-0 opacity-50" style={{ color: accentColor }}>·</span>
-                </dt>
+                <dt className="text-white/40">성별</dt>
                 <dd className="text-white/80">{data.gender}</dd>
                 
-                <dt className="text-white/40 relative">
-                  혈통
-                  <span className="absolute right-0 opacity-50" style={{ color: accentColor }}>·</span>
-                </dt>
+                <dt className="text-white/40">혈통</dt>
                 <dd className="text-white/80">{data.blood}</dd>
                 
-                <dt className="text-white/40 relative">
-                  학력
-                  <span className="absolute right-0 opacity-50" style={{ color: accentColor }}>·</span>
-                </dt>
+                <dt className="text-white/40">학력</dt>
                 <dd className="text-white/80">{data.school}</dd>
                 
-                <dt className="text-white/40 relative">
-                  기숙사
-                  <span className="absolute right-0 opacity-50" style={{ color: accentColor }}>·</span>
-                </dt>
-                <dd 
-                  className="font-medium transition-colors duration-500"
-                  style={{ color: accentColor }}
-                >
+                <dt className="text-white/40">기숙사</dt>
+                <dd className="font-medium transition-colors duration-500" style={{ color: accentColor }}>
                   {data.house}
                 </dd>
                 
-                <dt className="text-white/40 relative">
-                  지팡이
-                  <span className="absolute right-0 opacity-50" style={{ color: accentColor }}>·</span>
-                </dt>
+                <dt className="text-white/40">지팡이</dt>
                 <dd className="text-white/80">{data.wand}</dd>
                 
-                <dt className="text-white/40 relative">
-                  현직
-                  <span className="absolute right-0 opacity-50" style={{ color: accentColor }}>·</span>
-                </dt>
+                <dt className="text-white/40">현직</dt>
                 <dd className="text-white/80">{data.job}</dd>
                 
-                <dt className="text-white/40 relative">
-                  배우자
-                  <span className="absolute right-0 opacity-50" style={{ color: accentColor }}>·</span>
-                </dt>
+                <dt className="text-white/40">배우자</dt>
                 <dd className="text-white/80">{data.spouse}</dd>
                 
-                <dt className="text-white/40 relative">
-                  자식
-                  <span className="absolute right-0 opacity-50" style={{ color: accentColor }}>·</span>
-                </dt>
+                <dt className="text-white/40">자식</dt>
                 <dd className="text-white/80">{data.child}</dd>
               </div>
             </div>
