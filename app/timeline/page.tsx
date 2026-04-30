@@ -1,225 +1,281 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import EdgeCurtain from '@/components/EdgeCurtain'
+import { BalletRibbon, MagicSparkle } from '@/components/StageMotifs'
+import type { AU, AUData } from '@/app/api/au/route'
 
-const menuItems = [
-  { href: '/', label: '서장', chapter: 'CHAPTER ONE', en: 'Prologue', page: '01' },
-  { href: '/character', label: '캐릭터', chapter: 'CHAPTER TWO', en: 'Characters', page: '03' },
-  { href: '/record', label: '기록', chapter: 'CHAPTER THREE', en: 'Records', page: '05' },
-  { href: '/timeline', label: '연대기', chapter: 'CHAPTER FOUR', en: 'Timeline', page: '07' },
-]
+const MANON_COLOR = '#D9809A'
+const DYLAN_COLOR = '#C8C8C8'
 
 export default function TimelinePage() {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [aus, setAUs] = useState<AU[]>([])
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => { setMounted(true) }, [])
 
-  const events = [
-    {
-      era: '0차',
-      title: '대화1',
-      period: '11—13',
-      desc: '가나다라마바사',
-    },
-    {
-      era: '0차',
-      title: '대화2',
-      period: '11—13',
-      desc: '가나다라마바사',
-    },
-    {
-      era: '???',
-      title: 'To be continued',
-      desc: '가나다라마바사',
-      future: true,
-    },
-  ]
+  useEffect(() => {
+    fetch('/api/au')
+      .then(r => r.json())
+      .then((d: AUData) => {
+        if (d?.aus) setAUs(d.aus)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') setActiveIndex(i => Math.max(0, i - 1))
+      if (e.key === 'ArrowRight') setActiveIndex(i => Math.min(aus.length - 1, i + 1))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [aus.length])
+
+  const au = aus[activeIndex]
 
   return (
-    <div className="fixed inset-0 z-[60] bg-bg overflow-hidden">
+    <div className="fixed inset-0 z-[60] bg-black overflow-hidden text-white">
+      <EdgeCurtain side="left" />
+      <EdgeCurtain side="right" />
 
-      {/* ═══ 내지 레이아웃 선 (세로만) ═══ */}
-      <div className="fixed pointer-events-none z-[1]" style={{ left: 'clamp(28px, 3vw, 48px)', top: 0, bottom: 0, width: 0, borderLeft: '0.5px dashed rgba(20, 20, 20, 0.1)' }} />
-      <div className="fixed pointer-events-none z-[1]" style={{ right: 'clamp(28px, 3vw, 48px)', top: 0, bottom: 0, width: 0, borderLeft: '0.5px dashed rgba(20, 20, 20, 0.1)' }} />
-      <div className="fixed pointer-events-none z-[1]" style={{ left: '50%', top: 0, bottom: 0, width: 0, borderLeft: '0.5px solid rgba(20, 20, 20, 0.15)' }} />
-      <div className="fixed pointer-events-none z-[1]" style={{ left: 'calc(50% - clamp(28px, 3vw, 48px))', top: 0, bottom: 0, width: 0, borderLeft: '0.5px dashed rgba(20, 20, 20, 0.1)' }} />
-      <div className="fixed pointer-events-none z-[1]" style={{ left: 'calc(50% + clamp(28px, 3vw, 48px))', top: 0, bottom: 0, width: 0, borderLeft: '0.5px dashed rgba(20, 20, 20, 0.1)' }} />
+      <div className="fixed pointer-events-none z-[3] sketch-jitter-line" style={{
+        top: 'clamp(28px, 3vw, 48px)', left: '7%', right: '7%', height: '1px',
+        background: 'rgba(255,255,255,0.1)', filter: 'url(#sketchy)',
+      }} />
 
-      {/* ═══ 햄버거 메뉴 버튼 ═══ */}
-      <button
-        onClick={() => setMenuOpen(true)}
-        className="fixed top-5 right-5 z-[80] w-9 h-9 flex flex-col items-center justify-center gap-[5px] group"
-        aria-label="Menu"
-      >
-        <span className="block w-5 h-px bg-ink/30 group-hover:bg-ink/60 transition-colors" />
-        <span className="block w-5 h-px bg-ink/30 group-hover:bg-ink/60 transition-colors" />
-        <span className="block w-5 h-px bg-ink/30 group-hover:bg-ink/60 transition-colors" />
-      </button>
-
-      {/* ═══ 챕터 메뉴 오버레이 ═══ */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center" onClick={() => setMenuOpen(false)}>
-          <div className="absolute inset-0 bg-[#141414]/95 backdrop-blur-sm" />
-          <div className="relative z-10 w-full max-w-lg px-8" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setMenuOpen(false)}
-              className="absolute -top-12 right-0 text-white/30 hover:text-white/70 transition-colors label-caps"
-              style={{ fontSize: '0.55rem', letterSpacing: '0.2em' }}
-            >
-              CLOSE
-            </button>
-            <div className="mb-12 text-center">
-              <span className="label-caps text-white/15" style={{ fontSize: '0.5rem', letterSpacing: '0.25em' }}>TABLE OF CONTENTS</span>
-            </div>
-            <div className="space-y-0">
-              {menuItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="group block py-5 border-b border-white/[0.06] first:border-t transition-colors hover:bg-white/[0.02]"
-                >
-                  <div className="flex items-baseline justify-between gap-6">
-                    <div className="flex items-baseline gap-5">
-                      <span className="label-caps text-white/15 shrink-0" style={{ fontSize: '0.45rem', letterSpacing: '0.15em', minWidth: '1.5rem' }}>
-                        {item.page}
-                      </span>
-                      <div>
-                        <span className="heading-condensed text-white/25 text-xs" style={{ fontStyle: 'italic', letterSpacing: '0.08em' }}>
-                          {item.chapter}
-                        </span>
-                        <h3 className="heading-display text-[clamp(1.3rem,3vw,1.8rem)] text-white/80 group-hover:text-white transition-colors leading-tight mt-1">
-                          {item.label}
-                        </h3>
-                      </div>
-                    </div>
-                    <span className="heading-condensed text-white/15 text-sm shrink-0" style={{ fontStyle: 'italic' }}>
-                      {item.en}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            <div className="mt-12 text-center">
-              <span className="label-caps text-white/10" style={{ fontSize: '0.45rem', letterSpacing: '0.2em' }}>SAME &middot; 毒眼經</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ 메인 컨텐츠 ═══ */}
-      <div className="h-full w-full flex flex-col" style={{
-        padding: 'clamp(28px, 3vw, 48px)',
-      }}>
-
-        <div className="flex-1 flex min-h-0" style={{
-          paddingTop: 'clamp(28px, min(3vw, 5vh), 48px)',
-        }}>
-
-          {/* ── 왼쪽 페이지 ── */}
-          <div className="flex-1 flex flex-col min-h-0" style={{ paddingLeft: 'clamp(6px, 0.8vw, 14px)', paddingRight: 'clamp(28px, 3vw, 48px)' }}>
-
-            <div className={mounted ? 'animate-fade-slide-up' : 'opacity-0'} style={{ marginBottom: 'clamp(12px, min(2vw, 3.2vh), 28px)' }}>
-              <span className="heading-condensed text-ink/30" style={{
-                fontSize: 'clamp(1rem, min(1.5vw, 2.4vh), 1.5rem)',
-                letterSpacing: '-0.02em',
-              }}>
-                Chapter 04
-              </span>
-            </div>
-
-            <div className={mounted ? 'animate-fade-slide-up stagger-1' : 'opacity-0'}>
-              <h1 className="heading-display text-ink leading-[0.92]" style={{
-                fontSize: 'clamp(2.5rem, min(5vw, 8vh), 4.5rem)',
-                letterSpacing: '-0.03em',
-                marginBottom: 'clamp(4px, 0.5vw, 10px)',
-              }}>
-                Timeline
-              </h1>
-              <p className="heading-condensed text-ink/35" style={{
-                fontSize: 'clamp(1rem, min(1.8vw, 2.9vh), 1.5rem)',
-              }}>
-                인과의 수레바퀴
-              </p>
-            </div>
-
-            <div className="flex-1" />
-
-            <div className={mounted ? 'animate-fade-slide-up stagger-3' : 'opacity-0'}>
-              <span className="heading-display text-ink/[0.03] leading-[0.85] block text-right" style={{
-                fontSize: 'clamp(4rem, min(10vw, 13vh), 9rem)',
-                fontStyle: 'italic',
-              }}>
-                연대기
-              </span>
-            </div>
-          </div>
-
-          {/* ── 오른쪽 페이지 ── */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ paddingLeft: 'clamp(40px, 5vw, 80px)', paddingRight: 'clamp(6px, 0.8vw, 14px)' }}>
-
-            <div className={`label-caps text-ink/20 mb-6 flex items-center gap-3 ${mounted ? 'animate-fade-slide-up stagger-1' : 'opacity-0'}`}>
-              <span className="w-3 h-px bg-crimson/30" />
-              <span className="heading-condensed" style={{ fontStyle: 'italic' }}>CHAPTER FOUR,</span> TIMELINE
-            </div>
-
-            <div className={`flex-1 overflow-y-auto min-h-0 pr-2 ${mounted ? 'animate-fade-slide-up stagger-2' : 'opacity-0'}`}>
-              <div className="relative">
-                {events.map((event, index) => (
-                  <div key={index} className={`flex gap-5 ${index < events.length - 1 ? 'pb-8' : ''} ${event.future ? 'opacity-40' : ''}`}>
-                    <div className="shrink-0 w-14 text-right pt-0.5">
-                      <div className="label-caps text-crimson mb-0.5" style={{ fontSize: '0.55rem' }}>
-                        {event.era}
-                      </div>
-                      {event.period && (
-                        <div className="text-[10px] text-ink/25 font-body">
-                          {event.period}
-                        </div>
-                      )}
-                    </div>
-                    <div className="relative flex-1">
-                      <div
-                        className="absolute left-0 top-[5px] w-[5px] h-[5px] -translate-x-[2.5px]"
-                        style={{
-                          background: event.future ? 'transparent' : '#8B1538',
-                          border: event.future ? '1px solid rgba(45,45,45,0.2)' : 'none',
-                        }}
-                      />
-                      <div className="pl-4 border-l border-ink/[0.06]">
-                        <h3 className={`font-display text-lg leading-tight mb-1.5 ${
-                          event.future ? 'heading-condensed text-ink/30' : 'text-ink'
-                        }`}>
-                          {event.title}
-                        </h3>
-                        <p className="font-serif text-sm text-ink/45 leading-relaxed" style={{ textIndent: event.future ? '0' : '1em' }}>
-                          {event.desc}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ═══ 하단 페이지 번호 ═══ */}
-        <div className={`shrink-0 flex ${mounted ? 'animate-fade-slide-up stagger-4' : 'opacity-0'}`} style={{
-          paddingBottom: 'clamp(4px, 0.5vw, 10px)',
-          paddingTop: 'clamp(8px, 1vw, 16px)',
-        }}>
-          <div className="flex-1" style={{ paddingLeft: 'clamp(6px, 0.8vw, 14px)' }}>
-            <span className="label-caps text-ink/25" style={{ fontSize: 'clamp(0.5rem, 0.7vw, 0.6rem)', letterSpacing: '0.15em' }}>07</span>
-          </div>
-          <div className="flex-1 flex justify-end items-center gap-1.5" style={{ paddingRight: 'clamp(6px, 0.8vw, 14px)' }}>
-            <span className="label-caps text-ink/25" style={{ fontSize: 'clamp(0.5rem, 0.7vw, 0.6rem)', letterSpacing: '0.15em' }}>08</span>
-            <span className="text-ink/15" style={{ fontSize: 'clamp(0.45rem, 0.6vw, 0.55rem)' }}>/</span>
-            <span className="heading-condensed text-ink/25" style={{ fontSize: 'clamp(0.55rem, 0.8vw, 0.65rem)', fontStyle: 'italic' }}>Timeline</span>
-          </div>
+      <div className={`fixed top-0 left-0 right-0 z-[10] flex items-center justify-between ${mounted ? 'animate-fade-slide-up' : 'opacity-0'}`}
+        style={{ padding: 'clamp(28px, 3vw, 44px) clamp(64px, 9vw, 100px) 0' }}>
+        <button onClick={() => router.push('/')}
+          className="label-caps text-white/40 hover:text-white/80 transition-colors"
+          style={{ fontSize: '0.55rem', letterSpacing: '0.25em' }}>
+          ← BACK
+        </button>
+        <div className="flex items-baseline gap-2">
+          <span className="label-caps text-white/25" style={{ fontSize: '0.5rem', letterSpacing: '0.3em' }}>UNIVERSES</span>
+          <span className="text-white/15">·</span>
+          <span className="heading-condensed text-white/40" style={{ fontStyle: 'italic', fontSize: '0.7rem' }}>
+            Alternate Worlds
+          </span>
         </div>
       </div>
+
+      <div className="fixed pointer-events-none z-[2]" style={{ top: '12%', left: '9%' }}>
+        <BalletRibbon opacity={0.08} size={1.1} />
+      </div>
+      <div className="fixed pointer-events-none z-[2]" style={{ bottom: '12%', right: '9%' }}>
+        <MagicSparkle opacity={0.14} size={1.2} count={6} />
+      </div>
+
+      <div className="absolute inset-0 flex flex-col" style={{
+        paddingTop: 'clamp(80px, 10vw, 130px)',
+        paddingBottom: 'clamp(80px, 10vh, 120px)',
+        paddingLeft: '9%', paddingRight: '9%',
+      }}>
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-6 h-6 border border-white/10 border-t-white/40 rounded-full animate-spin" />
+          </div>
+        ) : aus.length === 0 ? (
+          <EmptyState />
+        ) : au ? (
+          <AUView au={au} key={au.id} />
+        ) : null}
+      </div>
+
+      {aus.length > 0 && (
+        <div className={`fixed left-0 right-0 bottom-0 z-[10] flex items-center justify-between ${mounted ? 'animate-fade-slide-up stagger-4' : 'opacity-0'}`}
+          style={{ padding: 'clamp(20px, 2vw, 32px) clamp(64px, 9vw, 100px)' }}>
+          <button
+            onClick={() => setActiveIndex(i => Math.max(0, i - 1))}
+            disabled={activeIndex === 0}
+            className="label-caps disabled:opacity-20 transition-opacity hover:text-white/80"
+            style={{ fontSize: '0.55rem', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.4)' }}
+          >
+            ← PREV
+          </button>
+          <div className="flex items-center gap-2">
+            {aus.map((_, i) => (
+              <button key={i} onClick={() => setActiveIndex(i)}
+                className="block transition-all"
+                style={{
+                  width: i === activeIndex ? '20px' : '4px',
+                  height: '4px',
+                  borderRadius: '2px',
+                  background: i === activeIndex ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.2)',
+                }}
+              />
+            ))}
+            <span className="ml-3 label-caps text-white/30" style={{ fontSize: '0.5rem', letterSpacing: '0.2em' }}>
+              {String(activeIndex + 1).padStart(2, '0')} / {String(aus.length).padStart(2, '0')}
+            </span>
+          </div>
+          <button
+            onClick={() => setActiveIndex(i => Math.min(aus.length - 1, i + 1))}
+            disabled={activeIndex === aus.length - 1}
+            className="label-caps disabled:opacity-20 transition-opacity hover:text-white/80"
+            style={{ fontSize: '0.55rem', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.4)' }}
+          >
+            NEXT →
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AUView({ au }: { au: AU }) {
+  const accent = au.themeColor || MANON_COLOR
+  return (
+    <div className="flex-1 flex flex-col animate-fade-in">
+      <div className="text-center mb-6 md:mb-8">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <span className="block h-px sketch-jitter-line" style={{
+            width: 'clamp(40px, 8vw, 90px)',
+            background: 'rgba(255,255,255,0.2)', filter: 'url(#sketchy)',
+          }} />
+          <span style={{
+            color: accent, fontSize: '0.65rem',
+            fontFamily: "'Playfair Display', serif", fontStyle: 'italic',
+            letterSpacing: '0.15em', opacity: 0.7,
+          }}>※</span>
+          <span className="block h-px sketch-jitter-line" style={{
+            width: 'clamp(40px, 8vw, 90px)',
+            background: 'rgba(255,255,255,0.2)', filter: 'url(#sketchy)',
+          }} />
+        </div>
+        <h1 className="heading-display" style={{
+          fontSize: 'clamp(1.6rem, 3vw, 2.4rem)',
+          color: 'rgba(255,255,255,0.92)',
+          letterSpacing: '-0.01em', lineHeight: 1.1,
+        }}>
+          {au.title}
+        </h1>
+        {au.subtitle && (
+          <p className="heading-condensed mt-2" style={{
+            color: 'rgba(255,255,255,0.4)', fontStyle: 'italic',
+            fontSize: 'clamp(0.75rem, 1.05vw, 0.95rem)', letterSpacing: '0.04em',
+          }}>
+            {au.subtitle}
+          </p>
+        )}
+      </div>
+
+      <div className="flex-1 grid grid-cols-[1fr_auto_1fr] gap-4 md:gap-6 lg:gap-8 items-stretch min-h-0">
+        <CharacterCard
+          name={au.manon.name || 'Manon'}
+          image={au.manon.image}
+          dialogue={au.manon.dialogue}
+          color={MANON_COLOR}
+          align="left"
+        />
+
+        <div className="flex flex-col items-center justify-center gap-3 px-2 md:px-4 min-w-[60px] md:min-w-[100px]">
+          <span className="block h-12 w-px sketch-jitter-line" style={{
+            background: 'rgba(255,255,255,0.18)', filter: 'url(#sketchy)',
+          }} />
+          <div className="text-center">
+            <span className="heading-display" style={{
+              color: accent,
+              fontSize: 'clamp(1.1rem, 1.6vw, 1.4rem)',
+              fontStyle: 'italic', letterSpacing: '-0.01em', whiteSpace: 'nowrap',
+            }}>
+              {au.relationship || '—'}
+            </span>
+          </div>
+          <span className="block h-12 w-px sketch-jitter-line" style={{
+            background: 'rgba(255,255,255,0.18)', filter: 'url(#sketchy)',
+          }} />
+        </div>
+
+        <CharacterCard
+          name={au.dylan.name || 'Dylan'}
+          image={au.dylan.image}
+          dialogue={au.dylan.dialogue}
+          color={DYLAN_COLOR}
+          align="right"
+        />
+      </div>
+    </div>
+  )
+}
+
+function CharacterCard({
+  name, image, dialogue, color, align,
+}: {
+  name: string; image?: string; dialogue?: string; color: string; align: 'left' | 'right'
+}) {
+  return (
+    <div className="flex flex-col min-h-0">
+      <div className="relative flex-1 min-h-0 mb-3 sketch-jitter-line" style={{
+        border: `1px solid ${color}40`,
+        background: 'rgba(255,255,255,0.015)',
+        filter: 'url(#sketchy)',
+      }}>
+        <span className="absolute inset-1 pointer-events-none" style={{ border: `1px solid ${color}15` }} />
+        {image ? (
+          <img src={image} alt={name} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="heading-display" style={{
+              color: `${color}25`,
+              fontSize: 'clamp(2.5rem, 6vw, 5rem)',
+              fontStyle: 'italic',
+            }}>
+              {name.charAt(0)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className={`mb-2 ${align === 'right' ? 'text-right' : 'text-left'}`}>
+        <h2 className="heading-display" style={{
+          color, fontSize: 'clamp(1.1rem, 1.7vw, 1.5rem)',
+          letterSpacing: '-0.01em', fontStyle: 'italic',
+        }}>
+          {name}
+        </h2>
+      </div>
+
+      {dialogue && (
+        <div className="relative sketch-jitter-line" style={{
+          border: `1px solid ${color}30`,
+          background: 'rgba(0,0,0,0.4)',
+          padding: '10px 14px',
+          filter: 'url(#sketchy)',
+        }}>
+          <p className="text-editorial whitespace-pre-wrap" style={{
+            color: 'rgba(255,255,255,0.78)',
+            fontSize: 'clamp(0.78rem, 1.05vw, 0.95rem)',
+            lineHeight: 1.7,
+            textAlign: align === 'right' ? 'right' : 'left',
+          }}>
+            {dialogue}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EmptyState() {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-6">
+      <span className="block h-px w-16" style={{ background: 'rgba(255,255,255,0.15)' }} />
+      <div className="text-center">
+        <p className="heading-display text-white/40" style={{ fontSize: 'clamp(1.5rem, 2.5vw, 2rem)', fontStyle: 'italic' }}>
+          No universes yet.
+        </p>
+        <p className="heading-condensed text-white/20 mt-3" style={{ fontStyle: 'italic', fontSize: '0.85rem' }}>
+          Add an alternate world from the admin panel.
+        </p>
+      </div>
+      <span className="block h-px w-16" style={{ background: 'rgba(255,255,255,0.15)' }} />
     </div>
   )
 }

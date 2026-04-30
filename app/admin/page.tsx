@@ -13,6 +13,18 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
 }
 
+function toRoman(num: number): string {
+  const map: [number, string][] = [
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ]
+  let result = ''
+  let n = num
+  for (const [v, s] of map) {
+    while (n >= v) { result += s; n -= v }
+  }
+  return result || 'I'
+}
+
 // 이미지를 압축하고 서버에 업로드
 async function uploadImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -107,68 +119,24 @@ async function uploadAudio(file: File): Promise<string> {
   return data.path
 }
 
-// 기본 캐릭터 데이터 (배열 형식)
+// 기본 캐릭터 데이터 — 비어있는 첫 페이즈 (admin에서 채움)
 const defaultCharacterData: CharacterData = {
   media: [
     {
-      id: 'media-0', symbol: '毒', label: 'PHASE 00', name: '[ 마녀 ]', quote: '" 비밀이야. "',
-      nameKr: '메디아 아우렐리우스', nameEn: 'MEDIA AURELIUS',
-      age: '13세', height: '143cm', weight: '37kg',
-      personality: ['불가해', '냉소', '강박'],
-      abilityName: '과잉 생장',
-      abilityDesc: '계절과 시간을 무시하고 제멋대로 피어나는 찰나의 초록색.',
-      mainQuote: '"상대가 나를 멸시하면서도 나를 필요로 하게 만드는 것."',
-    },
-    {
-      id: 'media-1', symbol: '種', label: 'PHASE 01', name: '[ 씨앗 ]', quote: '" 신경 쓰지 마. "',
-      nameKr: '메디아', nameEn: 'MEDIA',
-      age: '19세', height: '172cm', weight: '68kg',
-      personality: ['유기', '침묵', '균열'],
-      abilityName: '과잉 생장',
-      abilityDesc: '덩굴로 사람 두 명 정도를 강하게 옭아맬 수 있다.',
-      mainQuote: '"모두가 나를 필요로 하게 하기 위해서."',
-      stats: [{ label: '근력', value: 4 }, { label: '체력', value: 1 }, { label: '민첩', value: 5 }, { label: '이능력', value: 6 }],
-    },
-    {
-      id: 'media-2', symbol: '長', label: 'PHASE 02', name: '[ 생장 ]', quote: '" 속죄 따윈 안 해. "',
-      nameKr: '메디아', nameEn: 'MEDIA',
-      age: '19세', height: '172cm', weight: '68kg',
-      personality: ['유기', '침묵', '균열'],
-      abilityName: '과잉 생장',
-      abilityDesc: '균열난 화분이 깨져도 그것을 조각조각 맞추어 본래의 태가 나도록 만들었으니.',
-      mainQuote: '"어떤 것도 나를 정확하게 표현할 수 없으나."',
-      stats: [{ label: '근력', value: 4 }, { label: '체력', value: 1 }, { label: '민첩', value: 5 }, { label: '이능력', value: 8 }],
+      id: 'manon-0', symbol: '❀', label: 'VARIATION · I', name: '[ Première ]', quote: '""',
+      nameKr: 'Manon', nameEn: 'MANON',
+      age: '', height: '', weight: '',
+      personality: [],
+      abilityName: '', abilityDesc: '', mainQuote: '""',
     },
   ],
   sadham: [
     {
-      id: 'sadham-0', symbol: '修', label: 'PHASE 00', name: '[ 修羅道 ]', quote: '" 그만. 그 이상 접근하지 마라…. "',
-      nameKr: '사드함 눈', nameEn: 'SAKDĀGĀMI NOON',
-      age: '11세', height: '150cm', weight: '45kg',
-      personality: ['억제', '반골', '방관'],
-      abilityName: '아수라 — 삼독三毒',
-      abilityDesc: '세 번째 눈의 개안과 함께 삼독에 따른 세 가지 저주를 내릴 수 있다.',
-      mainQuote: '"힘은 진정한 나 자신을 나타내는, 가장 순수하고도 강력한 증명."',
-    },
-    {
-      id: 'sadham-1', symbol: '人', label: 'PHASE 01', name: '[ 人間道 ]', quote: '" 그만. 실없는 소리를 하는군…. "',
-      nameKr: '사드함 눈', nameEn: 'SAKDĀGĀMI NOON',
-      age: '17세', height: '180cm', weight: '75kg',
-      personality: ['억제', '비탈', '간섭'],
-      abilityName: '아수라 — 삼독三毒',
-      abilityDesc: '탐貪과 진瞋의 저주를 사용할 수 있다.',
-      mainQuote: '"나의 힘은 속죄하기 위해 존재한다."',
-      stats: [{ label: '근력', value: 3 }, { label: '체력', value: 5 }, { label: '민첩', value: 2 }, { label: '이능력', value: 6 }],
-    },
-    {
-      id: 'sadham-2', symbol: '鬼', label: 'PHASE 02', name: '[ 餓鬼道 ]', quote: '" 그만. 아무 것도 듣고 싶지 않다…. "',
-      nameKr: '사드함 눈', nameEn: 'SAKDĀGĀMI NOON',
-      age: '17세', height: '180cm', weight: '75kg',
-      personality: ['억제', '혼란', '강박'],
-      abilityName: '아수라 — 삼독三毒',
-      abilityDesc: '혼란, 혼돈, 혼동. 여전히 온갖 번뇌에서 벗어나지 못한 채.',
-      mainQuote: '"돌아오지 말아라."',
-      stats: [{ label: '근력', value: 3 }, { label: '체력', value: 5 }, { label: '민첩', value: 2 }, { label: '이능력', value: 6 }],
+      id: 'dylan-0', symbol: '✦', label: 'INCANTATION · I', name: '[ Cantus ]', quote: '""',
+      nameKr: 'Dylan', nameEn: 'DYLAN',
+      age: '', height: '', weight: '',
+      personality: [],
+      abilityName: '', abilityDesc: '', mainQuote: '""',
     },
   ]
 }
@@ -470,7 +438,7 @@ function SortableLine({
         <input
           value={line.speaker}
           onChange={(e) => onChange(line.id, 'speaker', e.target.value)}
-          className={`bg-transparent border-b border-ink/10 w-24 text-sm focus:outline-none focus:border-[#8B1538] transition-colors ${line.speaker.includes('사드함') ? 'text-[#5E7B97]' : 'text-red-400'}`}
+          className={`bg-transparent border-b border-ink/10 w-24 text-sm italic focus:outline-none focus:border-[#D9809A] transition-colors ${(line.speaker.includes('Dylan') || line.speaker.includes('딜런') || line.speaker.includes('사드함')) ? 'text-ink/70' : 'text-[#D9809A]'}`}
         />
 
         {hasImages && (
@@ -628,7 +596,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'roleplay' | 'trpg' | 'character' | 'game'>('roleplay')
+  const [activeTab, setActiveTab] = useState<'roleplay' | 'trpg' | 'character' | 'game' | 'au' | 'sheets'>('roleplay')
   const [message, setMessage] = useState('')
   
   // 역극 상태
@@ -646,6 +614,14 @@ export default function AdminPage() {
   const [charTab, setCharTab] = useState<'media' | 'sadham'>('media')
   const [charPhaseIdx, setCharPhaseIdx] = useState(0)
   const [charUploading, setCharUploading] = useState(false)
+
+  // AU 상태
+  const [auList, setAUList] = useState<any[]>([])
+  const [auSelectedIdx, setAUSelectedIdx] = useState(0)
+  const [auUploadingFor, setAUUploadingFor] = useState<{ idx: number; who: 'manon' | 'dylan' } | null>(null)
+
+  // 시트 리스트 상태
+  const [sheetsList, setSheetsList] = useState<any[]>([])
 
   // 게임 대사 상태
   const [gameData, setGameData] = useState<GameDialogueData>({ foreword: { parts: [] }, rebuttal: { parts: [] } })
@@ -669,6 +645,8 @@ export default function AdminPage() {
       fetchTRPG()
       fetchCharacterData()
       fetchGameData()
+      fetchAUs()
+      fetchSheets()
     }
   }, [isLoggedIn])
 
@@ -686,6 +664,112 @@ export default function AdminPage() {
       const data = await res.json()
       if (Array.isArray(data)) setTrpgList(data)
     } catch (e) { console.error(e) }
+  }
+
+  const fetchAUs = async () => {
+    try {
+      const res = await fetch('/api/au')
+      const data = await res.json()
+      if (Array.isArray(data?.aus)) setAUList(data.aus)
+    } catch (e) { console.error(e) }
+  }
+
+  const saveAUs = async (next: any[]) => {
+    setAUList(next)
+    try {
+      const res = await fetch('/api/au', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aus: next }),
+      })
+      if (res.ok) {
+        setMessage('AU 저장됨'); setTimeout(() => setMessage(''), 2000)
+      } else {
+        setMessage('AU 저장 실패'); setTimeout(() => setMessage(''), 2500)
+      }
+    } catch (e) { console.error(e) }
+  }
+
+  const handleAddAU = () => {
+    const newAU = {
+      id: generateId(),
+      title: '새 AU',
+      subtitle: '',
+      relationship: '',
+      themeColor: '#D9809A',
+      manon: { name: 'Manon', image: '', dialogue: '' },
+      dylan: { name: 'Dylan', image: '', dialogue: '' },
+    }
+    const next = [...auList, newAU]
+    saveAUs(next)
+    setAUSelectedIdx(next.length - 1)
+  }
+
+  const handleDeleteAU = (idx: number) => {
+    if (!confirm(`"${auList[idx].title}" AU를 삭제하시겠습니까?`)) return
+    const next = auList.filter((_, i) => i !== idx)
+    saveAUs(next)
+    setAUSelectedIdx(Math.max(0, Math.min(auSelectedIdx, next.length - 1)))
+  }
+
+  const updateAU = (idx: number, updates: any) => {
+    const next = auList.map((a, i) => i === idx ? { ...a, ...updates } : a)
+    saveAUs(next)
+  }
+
+  const updateAUCharacter = (idx: number, who: 'manon' | 'dylan', updates: any) => {
+    const next = auList.map((a, i) => i === idx
+      ? { ...a, [who]: { ...a[who], ...updates } }
+      : a)
+    saveAUs(next)
+  }
+
+  const handleAUImageUpload = async (idx: number, who: 'manon' | 'dylan', file: File) => {
+    setAUUploadingFor({ idx, who })
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/upload-image', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (data?.url) {
+        updateAUCharacter(idx, who, { image: data.url })
+      } else {
+        alert('이미지 업로드 실패')
+      }
+    } catch (e) { console.error(e); alert('이미지 업로드 실패') }
+    finally { setAUUploadingFor(null) }
+  }
+
+  const fetchSheets = async () => {
+    try {
+      const res = await fetch('/api/sheets')
+      const data = await res.json()
+      if (Array.isArray(data?.sheets)) setSheetsList(data.sheets)
+    } catch (e) { console.error(e) }
+  }
+
+  const saveSheets = async (next: any[]) => {
+    setSheetsList(next)
+    try {
+      const res = await fetch('/api/sheets', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheets: next }),
+      })
+      if (res.ok) { setMessage('시트 저장됨'); setTimeout(() => setMessage(''), 1500) }
+    } catch (e) { console.error(e) }
+  }
+
+  const handleAddSheet = () => {
+    const newSheet = { id: generateId(), title: '새 시트', description: '', url: '' }
+    saveSheets([...sheetsList, newSheet])
+  }
+
+  const handleDeleteSheet = (idx: number) => {
+    if (!confirm(`"${sheetsList[idx].title}" 시트를 삭제하시겠습니까?`)) return
+    saveSheets(sheetsList.filter((_, i) => i !== idx))
+  }
+
+  const updateSheet = (idx: number, updates: any) => {
+    saveSheets(sheetsList.map((s, i) => i === idx ? { ...s, ...updates } : s))
   }
 
   const fetchGameData = async () => {
@@ -725,9 +809,13 @@ export default function AdminPage() {
     const phases = characterData[charTab]
     const newPhase: CharacterPhaseData = {
       id: generateId(),
-      symbol: '?', label: `PHASE ${String(phases.length).padStart(2, '0')}`, name: '[ 새 페이즈 ]', quote: '""',
-      nameKr: charTab === 'media' ? '메디아' : '사드함 눈',
-      nameEn: charTab === 'media' ? 'MEDIA' : 'SAKDĀGĀMI NOON',
+      symbol: charTab === 'media' ? '❀' : '✦',
+      label: charTab === 'media'
+        ? `VARIATION · ${toRoman(phases.length + 1)}`
+        : `INCANTATION · ${toRoman(phases.length + 1)}`,
+      name: '[ 새 페이즈 ]', quote: '""',
+      nameKr: charTab === 'media' ? 'Manon' : 'Dylan',
+      nameEn: charTab === 'media' ? 'MANON' : 'DYLAN',
       age: '', height: '', weight: '',
       personality: [],
       abilityName: '', abilityDesc: '', mainQuote: '',
@@ -1167,7 +1255,7 @@ export default function AdminPage() {
       {/* 사이드바 */}
       <div className="w-80 bg-bg-cream border-r border-ink/10 flex flex-col">
         <div className="p-6 border-b border-ink/10">
-          <h1 className="font-display text-xl text-[#8B1538] mb-4">SAME ADMIN</h1>
+          <h1 className="font-display text-xl mb-4" style={{ color: '#D9809A', fontStyle: 'italic', letterSpacing: '0.04em' }}>SOMBRE · ADMIN</h1>
           
           {/* 탭 선택 */}
           <div className="flex gap-2 mb-4">
@@ -1188,6 +1276,14 @@ export default function AdminPage() {
             <button onClick={() => setActiveTab('game')}
               className={`flex-1 py-2 rounded text-sm ${activeTab === 'game' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
               게임 대사
+            </button>
+            <button onClick={() => setActiveTab('au')}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'au' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              AU
+            </button>
+            <button onClick={() => setActiveTab('sheets')}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'sheets' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              시트
             </button>
           </div>
           
@@ -1213,12 +1309,12 @@ export default function AdminPage() {
             <div className="space-y-3">
               <div className="flex gap-1">
                 <button onClick={() => { setCharTab('media'); setCharPhaseIdx(0) }}
-                  className={`flex-1 py-2 rounded text-xs font-bold ${charTab === 'media' ? 'bg-[#8B1538]/30 text-[#8B1538] border border-[#8B1538]/50' : 'bg-ink/[0.03] text-ink/40'}`}>
-                  메디아
+                  className={`flex-1 py-2 rounded text-xs font-bold italic ${charTab === 'media' ? 'bg-[#D9809A]/20 text-[#D9809A] border border-[#D9809A]/50' : 'bg-ink/[0.03] text-ink/40'}`}>
+                  Manon
                 </button>
                 <button onClick={() => { setCharTab('sadham'); setCharPhaseIdx(0) }}
-                  className={`flex-1 py-2 rounded text-xs font-bold ${charTab === 'sadham' ? 'bg-[#5E7B97]/30 text-[#5E7B97] border border-[#5E7B97]/50' : 'bg-ink/[0.03] text-ink/40'}`}>
-                  사드함
+                  className={`flex-1 py-2 rounded text-xs font-bold italic ${charTab === 'sadham' ? 'bg-[#888]/30 text-ink/70 border border-ink/30' : 'bg-ink/[0.03] text-ink/40'}`}>
+                  Dylan
                 </button>
               </div>
               <div className="space-y-1">
@@ -1275,16 +1371,16 @@ export default function AdminPage() {
               <p className="mb-2">좌측에서 캐릭터와<br/>차수를 선택하세요</p>
               <div className="w-12 h-px bg-ink/10 mx-auto"></div>
             </div>
-          ) : (
+          ) : activeTab === 'game' ? (
             <div className="space-y-3 p-2">
               <div className="flex gap-1">
                 <button onClick={() => setGameTab('foreword')}
-                  className={`flex-1 py-2 rounded text-xs font-bold ${gameTab === 'foreword' ? 'bg-[#8B1538]/30 text-[#8B1538] border border-[#8B1538]/50' : 'bg-ink/[0.03] text-ink/40'}`}>
-                  Foreword (Media)
+                  className={`flex-1 py-2 rounded text-xs font-bold italic ${gameTab === 'foreword' ? 'bg-[#D9809A]/20 text-[#D9809A] border border-[#D9809A]/50' : 'bg-ink/[0.03] text-ink/40'}`}>
+                  Foreword (Manon)
                 </button>
                 <button onClick={() => setGameTab('rebuttal')}
-                  className={`flex-1 py-2 rounded text-xs font-bold ${gameTab === 'rebuttal' ? 'bg-[#5E7B97]/30 text-[#5E7B97] border border-[#5E7B97]/50' : 'bg-ink/[0.03] text-ink/40'}`}>
-                  Rebuttal (Sadham)
+                  className={`flex-1 py-2 rounded text-xs font-bold italic ${gameTab === 'rebuttal' ? 'bg-[#888]/30 text-ink/70 border border-ink/30' : 'bg-ink/[0.03] text-ink/40'}`}>
+                  Rebuttal (Dylan)
                 </button>
               </div>
               <p className="text-xs text-ink/25">캐릭터 이미지 위에 클릭 가능한 부위를 추가하고 각 부위에 대사를 지정합니다.</p>
@@ -1299,7 +1395,49 @@ export default function AdminPage() {
                 ))}
               </div>
             </div>
-          )}
+          ) : activeTab === 'au' ? (
+            <div className="space-y-2">
+              <button onClick={handleAddAU}
+                className="w-full bg-[#8B1538]/10 hover:bg-[#8B1538]/20 text-[#8B1538] py-2.5 rounded text-sm border border-[#8B1538]/30">
+                + 새 AU 추가
+              </button>
+              <p className="text-xs text-ink/25 pt-1">각 AU마다 두 캐릭터의 이미지/이름/대사/관계를 설정합니다.</p>
+              <div className="space-y-1">
+                {auList.map((au, idx) => (
+                  <div key={au.id} className="flex items-center gap-1 group">
+                    <button onClick={() => setAUSelectedIdx(idx)}
+                      className={`flex-1 text-left px-3 py-2 rounded text-sm transition-colors ${
+                        auSelectedIdx === idx
+                          ? 'bg-[#8B1538]/15 text-[#8B1538] border border-[#8B1538]/40'
+                          : 'text-ink/60 hover:bg-ink/[0.04]'
+                      }`}>
+                      <span className="block truncate">{au.title || '(제목 없음)'}</span>
+                      {au.subtitle && <span className="text-[10px] text-ink/30">{au.subtitle}</span>}
+                    </button>
+                    <button onClick={() => handleDeleteAU(idx)}
+                      className="opacity-0 group-hover:opacity-100 text-ink/30 hover:text-red-500 px-2 text-xs"
+                      title="삭제">×</button>
+                  </div>
+                ))}
+                {auList.length === 0 && (
+                  <p className="text-center text-ink/20 text-xs py-4 italic">아직 AU가 없습니다.</p>
+                )}
+              </div>
+            </div>
+          ) : activeTab === 'sheets' ? (
+            <div className="space-y-2">
+              <button onClick={handleAddSheet}
+                className="w-full bg-[#8B1538]/10 hover:bg-[#8B1538]/20 text-[#8B1538] py-2.5 rounded text-sm border border-[#8B1538]/30">
+                + 새 시트 추가
+              </button>
+              <p className="text-xs text-ink/25 pt-1">
+                외부 시트/링크 모음. 어드민에게만 보입니다.
+              </p>
+              <p className="text-xs text-ink/25">
+                현재 {sheetsList.length}개 시트
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
       
@@ -1426,14 +1564,14 @@ export default function AdminPage() {
                         return (
                           <div className="flex items-center gap-6">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-ink/40">메디아:</span>
+                              <span className="text-xs italic" style={{ color: '#D9809A' }}>Manon:</span>
                               <button onClick={() => updateSectionAvatar('mediaAvatar', undefined)}
-                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-[9px] ${!sec.mediaAvatar ? 'border-[#8B1538] bg-ink/5 text-ink/40' : 'border-transparent bg-ink/[0.03] text-ink/20 hover:bg-ink/[0.06]'}`}>
-                                毒
+                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-[9px] italic ${!sec.mediaAvatar ? 'border-[#D9809A] bg-ink/5 text-ink/40' : 'border-transparent bg-ink/[0.03] text-ink/20 hover:bg-ink/[0.06]'}`}>
+                                M
                               </button>
                               {(characterData.mediaAvatars || []).map((url, i) => (
                                 <button key={i} onClick={() => updateSectionAvatar('mediaAvatar', url)}
-                                  className={`w-8 h-8 rounded-full border-2 overflow-hidden ${sec.mediaAvatar === url ? 'border-[#8B1538]' : 'border-transparent opacity-50 hover:opacity-100'}`}>
+                                  className={`w-8 h-8 rounded-full border-2 overflow-hidden ${sec.mediaAvatar === url ? 'border-[#D9809A]' : 'border-transparent opacity-50 hover:opacity-100'}`}>
                                   <img src={url} alt="" className="w-full h-full object-cover" />
                                 </button>
                               ))}
@@ -1442,14 +1580,14 @@ export default function AdminPage() {
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-ink/40">사드함:</span>
+                              <span className="text-xs italic text-ink/60">Dylan:</span>
                               <button onClick={() => updateSectionAvatar('sadhamAvatar', undefined)}
-                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-[9px] ${!sec.sadhamAvatar ? 'border-[#5E7B97] bg-ink/5 text-ink/40' : 'border-transparent bg-ink/[0.03] text-ink/20 hover:bg-ink/[0.06]'}`}>
-                                眼
+                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-[9px] italic ${!sec.sadhamAvatar ? 'border-ink/40 bg-ink/5 text-ink/40' : 'border-transparent bg-ink/[0.03] text-ink/20 hover:bg-ink/[0.06]'}`}>
+                                D
                               </button>
                               {(characterData.sadhamAvatars || []).map((url, i) => (
                                 <button key={i} onClick={() => updateSectionAvatar('sadhamAvatar', url)}
-                                  className={`w-8 h-8 rounded-full border-2 overflow-hidden ${sec.sadhamAvatar === url ? 'border-[#5E7B97]' : 'border-transparent opacity-50 hover:opacity-100'}`}>
+                                  className={`w-8 h-8 rounded-full border-2 overflow-hidden ${sec.sadhamAvatar === url ? 'border-ink/50' : 'border-transparent opacity-50 hover:opacity-100'}`}>
                                   <img src={url} alt="" className="w-full h-full object-cover" />
                                 </button>
                               ))}
@@ -1471,7 +1609,7 @@ export default function AdminPage() {
                     </DndContext>
                     <button onClick={() => { 
                       const r = {...editingRecord}
-                      r.phases[selectedPhaseIdx].sections[selectedSectionIdx].lines.push({ id: generateId(), speaker: '사드함', text: '' })
+                      r.phases[selectedPhaseIdx].sections[selectedSectionIdx].lines.push({ id: generateId(), speaker: 'Dylan', text: '' })
                       setEditingRecord(r)
                     }} className="w-full py-4 mt-4 border border-dashed border-ink/10 text-ink/20 hover:text-ink/50 rounded">+ 대사 추가</button>
                   </div>
@@ -1852,13 +1990,13 @@ export default function AdminPage() {
               </div>
             </div>
           </>
-        ) : (
+        ) : activeTab === 'game' ? (
           // 게임 대사 에디터
           <>
             <div className="h-16 border-b border-ink/10 flex items-center justify-between px-6 bg-bg-cream">
               <div className="flex items-center gap-3">
                 <span className="text-lg font-bold text-ink">
-                  {gameTab === 'foreword' ? 'Foreword by Media' : 'Rebuttal by Sakdāgāmi'}
+                  {gameTab === 'foreword' ? 'Foreword by Manon' : 'Rebuttal by Dylan'}
                 </span>
               </div>
               <div className="flex items-center gap-4">
@@ -2034,7 +2172,217 @@ export default function AdminPage() {
               </div>
             </div>
           </>
-        )}
+        ) : activeTab === 'au' ? (
+          // AU 에디터
+          <>
+            <div className="h-16 border-b border-ink/10 flex items-center justify-between px-6 bg-bg-cream">
+              <div className="flex items-center gap-3">
+                <span className="text-lg font-bold text-ink">
+                  {auList[auSelectedIdx]?.title || 'AU'}
+                </span>
+                <span className="text-sm text-ink/40">
+                  {auList.length > 0 ? `${auSelectedIdx + 1} / ${auList.length}` : ''}
+                </span>
+              </div>
+              <span className="text-xs text-ink/30">변경 시 자동 저장됩니다</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {auList.length === 0 ? (
+                <div className="text-center text-ink/30 py-20">
+                  <p className="text-lg italic mb-2">AU가 없습니다</p>
+                  <p className="text-sm">왼쪽에서 "+ 새 AU 추가" 버튼을 눌러주세요.</p>
+                </div>
+              ) : auList[auSelectedIdx] ? (() => {
+                const au = auList[auSelectedIdx]
+                const idx = auSelectedIdx
+                return (
+                  <div className="max-w-5xl mx-auto space-y-6">
+                    {/* AU 메타 */}
+                    <div className="space-y-3 p-5 bg-white/50 border border-ink/10 rounded-lg">
+                      <h3 className="text-sm font-bold text-ink/60">AU 정보</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[11px] text-ink/40 block mb-1">제목</label>
+                          <input value={au.title || ''}
+                            onChange={(e) => updateAU(idx, { title: e.target.value })}
+                            className="w-full bg-white border border-ink/10 rounded px-3 py-2 text-sm text-ink focus:outline-none focus:border-[#8B1538]/40"
+                            placeholder="예: 한국 국적 AU" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-ink/40 block mb-1">부제 (작은 글씨)</label>
+                          <input value={au.subtitle || ''}
+                            onChange={(e) => updateAU(idx, { subtitle: e.target.value })}
+                            className="w-full bg-white border border-ink/10 rounded px-3 py-2 text-sm text-ink focus:outline-none focus:border-[#8B1538]/40"
+                            placeholder="예: 검은 들녘 위의 이데아" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-ink/40 block mb-1">관계 (가운데 표시)</label>
+                          <input value={au.relationship || ''}
+                            onChange={(e) => updateAU(idx, { relationship: e.target.value })}
+                            className="w-full bg-white border border-ink/10 rounded px-3 py-2 text-sm text-ink focus:outline-none focus:border-[#8B1538]/40"
+                            placeholder="예: 연인, ?, 적, ⟷" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-ink/40 block mb-1">테마 색상 (관계 텍스트 색)</label>
+                          <div className="flex gap-2">
+                            <input type="color" value={au.themeColor || '#D9809A'}
+                              onChange={(e) => updateAU(idx, { themeColor: e.target.value })}
+                              className="h-9 w-16 rounded border border-ink/10" />
+                            <input value={au.themeColor || ''}
+                              onChange={(e) => updateAU(idx, { themeColor: e.target.value })}
+                              className="flex-1 bg-white border border-ink/10 rounded px-3 py-2 text-sm text-ink focus:outline-none font-mono"
+                              placeholder="#D9809A" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 두 캐릭터 카드 */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {(['manon', 'dylan'] as const).map(who => {
+                        const accent = who === 'manon' ? '#D9809A' : '#888888'
+                        const character = au[who] || { name: '', image: '', dialogue: '' }
+                        return (
+                          <div key={who} className="p-5 bg-white/50 border border-ink/10 rounded-lg space-y-3"
+                            style={{ borderLeftColor: accent, borderLeftWidth: '3px' }}>
+                            <h3 className="text-sm font-bold" style={{ color: accent }}>
+                              {who === 'manon' ? 'Manon (분홍)' : 'Dylan (무채색)'}
+                            </h3>
+
+                            {/* 이미지 업로드 */}
+                            <div>
+                              <label className="text-[11px] text-ink/40 block mb-1">이미지</label>
+                              {character.image ? (
+                                <div className="relative group">
+                                  <img src={character.image} alt={who}
+                                    className="w-full aspect-[3/4] object-cover rounded border border-ink/10" />
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                                    <label className="bg-white/90 px-3 py-1 rounded text-xs cursor-pointer">
+                                      교체
+                                      <input type="file" accept="image/*" className="hidden"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0]
+                                          if (file) handleAUImageUpload(idx, who, file)
+                                        }} />
+                                    </label>
+                                    <button onClick={() => updateAUCharacter(idx, who, { image: '' })}
+                                      className="bg-red-500/90 text-white px-3 py-1 rounded text-xs">삭제</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <label className="flex flex-col items-center justify-center w-full aspect-[3/4] bg-ink/[0.03] border-2 border-dashed border-ink/15 rounded cursor-pointer hover:bg-ink/[0.06]">
+                                  {auUploadingFor?.idx === idx && auUploadingFor?.who === who ? (
+                                    <span className="text-ink/40 text-sm">업로드 중...</span>
+                                  ) : (
+                                    <>
+                                      <span className="text-2xl mb-1">📷</span>
+                                      <span className="text-ink/40 text-xs">이미지 업로드</span>
+                                    </>
+                                  )}
+                                  <input type="file" accept="image/*" className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0]
+                                      if (file) handleAUImageUpload(idx, who, file)
+                                    }} />
+                                </label>
+                              )}
+                            </div>
+
+                            {/* 이름 */}
+                            <div>
+                              <label className="text-[11px] text-ink/40 block mb-1">이름 (이 AU에서)</label>
+                              <input value={character.name || ''}
+                                onChange={(e) => updateAUCharacter(idx, who, { name: e.target.value })}
+                                className="w-full bg-white border border-ink/10 rounded px-3 py-2 text-sm text-ink focus:outline-none"
+                                placeholder={who === 'manon' ? '예: 백연우' : '예: 서정원'} />
+                            </div>
+
+                            {/* 대사 */}
+                            <div>
+                              <label className="text-[11px] text-ink/40 block mb-1">대사 / 인용</label>
+                              <textarea value={character.dialogue || ''}
+                                onChange={(e) => updateAUCharacter(idx, who, { dialogue: e.target.value })}
+                                rows={3}
+                                className="w-full bg-white border border-ink/10 rounded px-3 py-2 text-sm text-ink focus:outline-none resize-none"
+                                placeholder="이 캐릭터의 대사 또는 인용..." />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* 미리보기 링크 */}
+                    <div className="flex justify-center pt-2">
+                      <a href="/timeline" target="_blank" rel="noreferrer"
+                        className="text-xs text-[#8B1538] hover:underline">
+                        ↗ /timeline 페이지에서 미리보기
+                      </a>
+                    </div>
+                  </div>
+                )
+              })() : null}
+            </div>
+          </>
+        ) : activeTab === 'sheets' ? (
+          // 시트 리스트 에디터
+          <>
+            <div className="h-16 border-b border-ink/10 flex items-center justify-between px-6 bg-bg-cream">
+              <div className="flex items-baseline gap-3">
+                <span className="text-lg font-bold text-ink italic">시트 리스트</span>
+                <span className="text-sm text-ink/40">sheet list</span>
+              </div>
+              <span className="text-xs text-ink/30">변경 시 자동 저장됩니다</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 bg-bg">
+              <p className="text-xs text-ink/40 mb-4 max-w-3xl">
+                체크리스트, 외부 시트, 링크 등을 정리해둡니다. 어드민 로그인 시에만 보입니다.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-5xl">
+                {sheetsList.map((sheet, idx) => (
+                  <div key={sheet.id}
+                    className="group relative p-4 bg-white/60 border border-ink/10 rounded hover:border-ink/25 transition-colors">
+
+                    <button onClick={() => handleDeleteSheet(idx)}
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-ink/30 hover:text-red-500 px-1 text-xs"
+                      title="삭제">×</button>
+
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <input value={sheet.title || ''}
+                        onChange={(e) => updateSheet(idx, { title: e.target.value })}
+                        placeholder="시트 제목"
+                        className="font-bold text-sm text-ink/80 bg-transparent border-none outline-none focus:bg-ink/[0.02] flex-1 min-w-0" />
+                    </div>
+
+                    <input value={sheet.description || ''}
+                      onChange={(e) => updateSheet(idx, { description: e.target.value })}
+                      placeholder="한 줄 설명"
+                      className="w-full text-xs text-ink/45 bg-transparent border-none outline-none focus:bg-ink/[0.02] mb-3" />
+
+                    <div className="flex items-center gap-2">
+                      <input value={sheet.url || ''}
+                        onChange={(e) => updateSheet(idx, { url: e.target.value })}
+                        placeholder="https://..."
+                        className="flex-1 text-[11px] text-ink/50 bg-ink/[0.03] px-2 py-1.5 rounded border border-ink/10 outline-none focus:border-ink/30 font-mono min-w-0" />
+                      {sheet.url && (
+                        <a href={sheet.url} target="_blank" rel="noreferrer"
+                          className="shrink-0 px-3 py-1.5 bg-ink text-bg text-xs rounded hover:bg-ink/85 transition-colors whitespace-nowrap">
+                          바로가기 →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {sheetsList.length === 0 && (
+                  <div className="col-span-full text-center text-ink/30 py-16">
+                    <p className="text-lg italic mb-2">시트가 없습니다</p>
+                    <p className="text-sm">왼쪽에서 "+ 새 시트 추가" 버튼을 눌러주세요.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   )

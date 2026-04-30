@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import Sidebar from '@/components/Sidebar'
 import CustomCursor from '@/components/CustomCursor'
+import SketchyFilter from '@/components/SketchyFilter'
 
 export const metadata: Metadata = {
   title: 'SOMBRE',
@@ -15,7 +16,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className="bg-bg text-ink min-h-screen">
+      <body className="bg-black text-white min-h-screen">
+        <SketchyFilter />
         <CustomCursor />
         <Sidebar />
         <main className="pt-[44px] min-h-screen">

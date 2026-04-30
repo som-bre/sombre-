@@ -4,10 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const navItems = [
-  { href: '/', label: '서장' },
-  { href: '/character', label: '캐릭터' },
-  { href: '/record', label: '기록' },
-  { href: '/timeline', label: '연대기' },
+  { href: '/', label: '서장', en: 'Prologue' },
+  { href: '/character', label: '캐릭터', en: 'Characters' },
+  { href: '/record', label: '기록', en: 'Records' },
+  { href: '/timeline', label: '연대기', en: 'Timeline' },
 ]
 
 export default function Sidebar() {
@@ -18,47 +18,80 @@ export default function Sidebar() {
   return (
     <>
       {/* Fixed Top Bar */}
-      <nav className="fixed top-0 left-0 right-0 h-[44px] bg-bg border-b border-ink/10 flex items-center justify-between px-5 z-50 font-body">
+      <nav
+        className="fixed top-0 left-0 right-0 h-[44px] flex items-center justify-between px-5 z-50 font-body"
+        style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)' }}
+      >
+        {/* Bottom sketchy border */}
+        <span
+          className="absolute bottom-0 left-0 right-0 sketch-jitter-line pointer-events-none"
+          style={{ height: '1px', background: 'rgba(255,255,255,0.1)', filter: 'url(#sketchy)' }}
+        />
+
         {/* Left: Logo */}
         <div className="flex items-center gap-3">
-          <Link href="/" className="label-caps text-crimson tracking-[0.2em] hover:opacity-70 transition-opacity" style={{ fontSize: '0.6rem' }}>
-            SAME
+          <Link
+            href="/"
+            className="heading-display tracking-[0.02em] hover:opacity-70 transition-opacity"
+            style={{
+              fontSize: '0.95rem',
+              color: 'rgba(255,255,255,0.85)',
+              fontStyle: 'italic',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+            }}
+          >
+            SOMBRE
           </Link>
-          {!isHome && (
-            <>
-              <span className="text-ink/15 text-[10px]">:</span>
-              <span className="label-caps text-ink/40" style={{ fontSize: '0.55rem' }}>
-                毒眼經
-              </span>
-            </>
-          )}
         </div>
 
-        {/* Center: Navigation links */}
-        <div className="hidden md:flex items-center gap-6">
+        {/* Center: Navigation */}
+        <div className="hidden md:flex items-center gap-7">
           {navItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`text-[11px] tracking-[0.08em] transition-colors ${
-                  isActive
-                    ? 'text-ink font-medium'
-                    : 'text-ink/30 hover:text-ink/60'
-                }`}
-                style={{ fontFamily: "'Pretendard Variable', sans-serif" }}
+                className="group relative transition-colors"
               >
-                {item.label}
+                <span
+                  className="heading-condensed transition-colors"
+                  style={{
+                    fontSize: '0.78rem',
+                    fontStyle: 'italic',
+                    letterSpacing: '0.04em',
+                    color: isActive ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)',
+                  }}
+                >
+                  {item.en}
+                </span>
+                {isActive && (
+                  <span
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 sketch-jitter-line"
+                    style={{
+                      width: '60%', height: '1px',
+                      background: 'rgba(255,255,255,0.5)',
+                      filter: 'url(#sketchy)',
+                    }}
+                  />
+                )}
               </Link>
             )
           })}
         </div>
 
-        {/* Right: Current section */}
-        <div className="flex items-center gap-2">
+        {/* Right: Current section + Korean label */}
+        <div className="flex items-center gap-3">
           {current && !isHome && (
-            <span className="label-caps text-ink/30" style={{ fontSize: '0.55rem' }}>
+            <span
+              className="label-caps"
+              style={{
+                fontSize: '0.5rem',
+                letterSpacing: '0.25em',
+                color: 'rgba(255,255,255,0.35)',
+              }}
+            >
               {current.label}
             </span>
           )}
@@ -66,18 +99,30 @@ export default function Sidebar() {
       </nav>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-12 bg-bg/95 backdrop-blur border-t border-ink/10 flex items-center justify-around z-50">
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 h-12 flex items-center justify-around z-50"
+        style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(6px)' }}
+      >
+        <span
+          className="absolute top-0 left-0 right-0 sketch-jitter-line pointer-events-none"
+          style={{ height: '1px', background: 'rgba(255,255,255,0.1)', filter: 'url(#sketchy)' }}
+        />
         {navItems.map((item) => {
           const isActive = pathname === item.href
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`text-[10px] tracking-[0.06em] py-2 px-3 font-body ${
-                isActive ? 'text-ink font-medium' : 'text-ink/30'
-              }`}
+              className="py-2 px-3 transition-colors"
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontStyle: 'italic',
+                fontSize: '0.75rem',
+                letterSpacing: '0.04em',
+                color: isActive ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)',
+              }}
             >
-              {item.label}
+              {item.en}
             </Link>
           )
         })}

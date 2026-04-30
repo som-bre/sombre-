@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import EdgeCurtain from '@/components/EdgeCurtain'
+import { BalletRibbon } from '@/components/StageMotifs'
 
 interface BodyPart {
   id: string
@@ -19,6 +21,9 @@ interface GameSection {
   parts: BodyPart[]
 }
 
+const ACCENT = '#D9809A'
+const CHARACTER = 'Manon'
+
 export default function ForewordPage() {
   const router = useRouter()
   const [data, setData] = useState<GameSection | null>(null)
@@ -26,6 +31,7 @@ export default function ForewordPage() {
   const [activePart, setActivePart] = useState<BodyPart | null>(null)
   const [displayedText, setDisplayedText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [hoveredPart, setHoveredPart] = useState<string | null>(null)
   const typingRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
@@ -39,7 +45,6 @@ export default function ForewordPage() {
 
   const handlePartClick = (part: BodyPart) => {
     if (typingRef.current) clearInterval(typingRef.current)
-
     setActivePart(part)
     setDisplayedText('')
     setIsTyping(true)
@@ -68,129 +73,167 @@ export default function ForewordPage() {
     return () => { if (typingRef.current) clearInterval(typingRef.current) }
   }, [])
 
-  const ACCENT = '#8B1538'
-
   return (
-    <div className="fixed inset-0 z-[60] bg-bg overflow-hidden">
-      {/* 배경 선 */}
-      <div className="fixed pointer-events-none z-[1]" style={{ top: 'clamp(28px, 3vw, 48px)', left: 0, right: 0, height: 0, borderTop: '0.5px dashed rgba(20,20,20,0.1)' }} />
-      <div className="fixed pointer-events-none z-[1]" style={{ bottom: 'clamp(28px, 3vw, 48px)', left: 0, right: 0, height: 0, borderTop: '0.5px dashed rgba(20,20,20,0.1)' }} />
-      <div className="fixed pointer-events-none z-[1]" style={{ left: 'clamp(28px, 3vw, 48px)', top: 0, bottom: 0, width: 0, borderLeft: '0.5px dashed rgba(20,20,20,0.1)' }} />
-      <div className="fixed pointer-events-none z-[1]" style={{ right: 'clamp(28px, 3vw, 48px)', top: 0, bottom: 0, width: 0, borderLeft: '0.5px dashed rgba(20,20,20,0.1)' }} />
-      <div className="fixed pointer-events-none z-[1]" style={{ left: '50%', top: 0, bottom: 0, width: 0, borderLeft: '0.5px solid rgba(20,20,20,0.15)' }} />
+    <div className="fixed inset-0 z-[60] bg-black overflow-hidden">
 
-      {/* 뒤로가기 */}
-      <button onClick={() => router.push('/')}
-        className={`fixed z-[10] label-caps text-ink/30 hover:text-ink/70 transition-colors ${mounted ? 'animate-fade-slide-up' : 'opacity-0'}`}
-        style={{ top: 'clamp(36px, 4vw, 56px)', left: 'clamp(36px, 4vw, 56px)', fontSize: '0.55rem', letterSpacing: '0.15em' }}>
-        ← BACK
-      </button>
+      <EdgeCurtain side="left" />
+      <EdgeCurtain side="right" />
 
-      {/* 메인 레이아웃 */}
-      <div className="h-full w-full flex" style={{ padding: 'clamp(28px, 3vw, 48px)' }}>
+      {/* Subtle ribbon motif top corner */}
+      <div className="fixed pointer-events-none z-[2]" style={{ top: '8%', right: '10%' }}>
+        <BalletRibbon opacity={0.12} size={1.3} />
+      </div>
 
-        {/* 좌측: 캐릭터 이미지 + 부위 */}
-        <div className={`flex-1 flex items-center justify-center ${mounted ? 'animate-fade-slide-up stagger-1' : 'opacity-0'}`}>
-          {data?.characterImage ? (
-            <div className="relative max-h-[80vh] max-w-[40vw]">
-              <img src={data.characterImage} alt="Media" className="max-h-[80vh] max-w-full object-contain" />
+      {/* Spotlight from top */}
+      <div className="absolute pointer-events-none" style={{
+        top: 0, left: '20%', right: '20%', height: '70%',
+        background: 'radial-gradient(ellipse 60% 80% at 50% 0%, rgba(217,128,154,0.06) 0%, transparent 70%)',
+      }} />
 
-              {/* SVG 다각형 클릭 영역 (투명) */}
-              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                {data.parts.map((part) => {
-                  const pts = part.points && part.points.length >= 3 ? part.points : null
-                  if (!pts) return null
-                  return (
-                    <polygon key={part.id}
-                      points={pts.map(p => `${p[0]},${p[1]}`).join(' ')}
-                      fill="transparent"
-                      stroke="transparent"
-                      onClick={() => handlePartClick(part)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                  )
-                })}
-              </svg>
-            </div>
-          ) : (
-            <div className="text-center">
-              <p className="heading-condensed text-ink/20" style={{ fontStyle: 'italic', fontSize: 'clamp(1rem, 1.5vw, 1.4rem)' }}>
-                No character image set.
-              </p>
-              <p className="text-ink/10 text-xs mt-2">Admin에서 캐릭터 이미지와 부위를 설정하세요.</p>
-            </div>
-          )}
-        </div>
+      {/* Frame lines */}
+      <div className="fixed pointer-events-none z-[3] sketch-jitter-line" style={{ top: 'clamp(28px, 3vw, 48px)', left: '7%', right: '7%', height: '1px', background: 'rgba(255,255,255,0.1)', filter: 'url(#sketchy)' }} />
 
-        {/* 우측: 대사 영역 */}
-        <div className={`flex-1 flex flex-col justify-center ${mounted ? 'animate-fade-slide-up stagger-2' : 'opacity-0'}`}
-          style={{ paddingLeft: 'clamp(40px, 5vw, 80px)', paddingRight: 'clamp(20px, 3vw, 40px)' }}>
-
-          {/* 타이틀 */}
-          <div style={{ marginBottom: 'clamp(24px, 3vw, 48px)' }}>
-            <span className="label-caps text-ink/15" style={{ fontSize: '0.5rem', letterSpacing: '0.2em' }}>FOREWORD</span>
-            <h1 className="heading-display leading-tight" style={{
-              fontSize: 'clamp(2rem, 3.5vw, 3.5rem)',
-              color: ACCENT,
-              letterSpacing: '-0.03em',
-              marginTop: '4px',
-            }}>
-              Media
-            </h1>
-            <p className="heading-condensed text-ink/30 mt-1" style={{
-              fontStyle: 'italic',
-              fontSize: 'clamp(0.9rem, 1.3vw, 1.2rem)',
-            }}>
-              Aurelius
-            </p>
-          </div>
-
-          {/* 대사 박스 */}
-          {activePart ? (
-            <div className="relative" onClick={skipTyping}>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="w-3 h-px" style={{ background: ACCENT, opacity: 0.4 }} />
-                <span className="label-caps" style={{ fontSize: '0.5rem', color: ACCENT, opacity: 0.6, letterSpacing: '0.1em' }}>
-                  {activePart.label}
-                </span>
-              </div>
-              <div className="relative" style={{ minHeight: '80px' }}>
-                <p className="text-editorial text-ink/75 leading-[1.9]" style={{
-                  fontSize: 'clamp(0.95rem, 1.3vw, 1.15rem)',
-                }}>
-                  {displayedText}
-                  {isTyping && <span className="inline-block w-[2px] h-[1em] ml-0.5 animate-pulse" style={{ background: ACCENT, verticalAlign: 'text-bottom' }} />}
-                </p>
-              </div>
-              {!isTyping && (
-                <p className="mt-4 label-caps text-ink/15 animate-fade-in" style={{ fontSize: '0.45rem', letterSpacing: '0.15em' }}>
-                  Click another part to continue
-                </p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <p className="heading-condensed text-ink/20" style={{ fontStyle: 'italic', fontSize: 'clamp(0.95rem, 1.3vw, 1.2rem)' }}>
-                {data?.parts && data.parts.length > 0
-                  ? 'Click on the character to begin.'
-                  : 'No dialogues configured yet.'}
-              </p>
-            </div>
-          )}
-
-          {/* 스페이서 */}
-          <div style={{ height: 'clamp(40px, 6vw, 80px)' }} />
+      {/* Top bar: Back + Title */}
+      <div className={`fixed top-0 left-0 right-0 z-[10] flex items-center justify-between ${mounted ? 'animate-fade-slide-up' : 'opacity-0'}`}
+        style={{ padding: 'clamp(28px, 3vw, 44px) clamp(64px, 9vw, 100px) 0' }}>
+        <button onClick={() => router.push('/')}
+          className="label-caps text-white/40 hover:text-white/80 transition-colors"
+          style={{ fontSize: '0.55rem', letterSpacing: '0.25em' }}>
+          ← BACK
+        </button>
+        <div className="flex items-baseline gap-2">
+          <span className="label-caps text-white/25" style={{ fontSize: '0.5rem', letterSpacing: '0.3em' }}>FOREWORD</span>
+          <span className="text-white/15">·</span>
+          <span className="heading-condensed text-white/40" style={{ fontStyle: 'italic', fontSize: '0.7rem' }}>by {CHARACTER}</span>
         </div>
       </div>
 
-      {/* 하단 페이지 번호 */}
-      <div className={`fixed bottom-0 left-0 right-0 flex justify-end px-8 ${mounted ? 'animate-fade-slide-up stagger-4' : 'opacity-0'}`}
-        style={{ paddingBottom: 'clamp(12px, 1.5vw, 20px)' }}>
-        <div className="flex items-center gap-2">
-          <span className="label-caps text-ink/25" style={{ fontSize: '0.5rem', letterSpacing: '0.15em' }}>F</span>
-          <span className="text-ink/15" style={{ fontSize: '0.45rem' }}>/</span>
-          <span className="heading-condensed text-ink/25" style={{ fontSize: '0.55rem', fontStyle: 'italic' }}>Foreword</span>
+      {/* Character stage */}
+      <div className={`absolute inset-0 flex items-center justify-center ${mounted ? 'animate-fade-slide-up stagger-2' : 'opacity-0'}`}
+        style={{ paddingTop: 'clamp(60px, 8vw, 110px)', paddingBottom: 'clamp(220px, 28vh, 320px)', paddingLeft: '8%', paddingRight: '8%' }}>
+        {data?.characterImage ? (
+          <div className="relative h-full flex items-center justify-center">
+            <img
+              src={data.characterImage}
+              alt={CHARACTER}
+              className="max-h-full max-w-full object-contain"
+              style={{ filter: 'drop-shadow(0 0 30px rgba(217,128,154,0.08))' }}
+            />
+            {/* Click polygons */}
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+              {data.parts.map((part) => {
+                const pts = part.points && part.points.length >= 3 ? part.points : null
+                if (!pts) return null
+                const isActive = activePart?.id === part.id
+                const isHover = hoveredPart === part.id
+                return (
+                  <polygon key={part.id}
+                    points={pts.map(p => `${p[0]},${p[1]}`).join(' ')}
+                    fill={isActive ? 'rgba(217,128,154,0.12)' : isHover ? 'rgba(217,128,154,0.06)' : 'transparent'}
+                    stroke={isActive ? 'rgba(217,128,154,0.5)' : isHover ? 'rgba(217,128,154,0.25)' : 'transparent'}
+                    strokeWidth="0.2"
+                    style={{ cursor: 'pointer', transition: 'fill 0.3s, stroke 0.3s', filter: isActive || isHover ? 'url(#sketchy)' : undefined }}
+                    onClick={() => handlePartClick(part)}
+                    onMouseEnter={() => setHoveredPart(part.id)}
+                    onMouseLeave={() => setHoveredPart(null)}
+                  />
+                )
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="text-center">
+            <p className="heading-condensed text-white/30" style={{ fontStyle: 'italic', fontSize: 'clamp(1rem, 1.5vw, 1.4rem)' }}>
+              No character image set.
+            </p>
+            <p className="text-white/15 text-xs mt-2">Admin에서 캐릭터 이미지와 부위를 설정하세요.</p>
+          </div>
+        )}
+      </div>
+
+      {/* ═══ Visual-novel style dialogue box (bottom) ═══ */}
+      <div
+        className={`fixed left-0 right-0 z-[15] cursor-pointer ${mounted ? 'animate-fade-slide-up stagger-3' : 'opacity-0'}`}
+        style={{ bottom: 'clamp(28px, 3vw, 44px)', padding: '0 clamp(64px, 9vw, 100px)' }}
+        onClick={skipTyping}
+      >
+        <div className="relative">
+          {/* Name plate */}
+          {activePart && (
+            <div
+              className="inline-flex items-baseline gap-3 px-4 py-1.5 mb-[-1px] sketch-jitter-line relative z-[2]"
+              style={{
+                background: '#000',
+                border: '1px solid rgba(217,128,154,0.4)',
+                borderBottom: 'none',
+                filter: 'url(#sketchy)',
+              }}
+            >
+              <span className="heading-display" style={{
+                color: ACCENT, fontSize: '0.95rem', fontStyle: 'italic',
+                letterSpacing: '0.04em',
+              }}>
+                {CHARACTER}
+              </span>
+              <span className="label-caps text-white/30" style={{ fontSize: '0.45rem', letterSpacing: '0.25em' }}>
+                ⟢ {activePart.label}
+              </span>
+            </div>
+          )}
+
+          {/* Dialogue box */}
+          <div
+            className="relative sketch-jitter-line"
+            style={{
+              minHeight: 'clamp(140px, 20vh, 200px)',
+              background: 'rgba(0,0,0,0.85)',
+              border: '1px solid rgba(217,128,154,0.35)',
+              backdropFilter: 'blur(3px)',
+              filter: 'url(#sketchy)',
+              padding: 'clamp(20px, 2.5vw, 32px) clamp(28px, 3.5vw, 48px)',
+            }}
+          >
+            {/* Inner thin border */}
+            <span className="absolute inset-1 pointer-events-none" style={{ border: '1px solid rgba(217,128,154,0.1)' }} />
+
+            {activePart ? (
+              <div className="relative">
+                <p className="text-editorial text-white/85" style={{
+                  fontSize: 'clamp(0.95rem, 1.25vw, 1.15rem)',
+                  lineHeight: 1.85, letterSpacing: '-0.01em',
+                  textAlign: 'left',
+                  whiteSpace: 'pre-wrap',
+                }}>
+                  {displayedText}
+                  {isTyping && (
+                    <span className="inline-block w-[2px] h-[1em] ml-0.5 align-text-bottom animate-pulse" style={{ background: ACCENT }} />
+                  )}
+                </p>
+                {!isTyping && displayedText && (
+                  <div className="absolute bottom-0 right-0 flex items-center gap-2 animate-pulse">
+                    <span className="label-caps text-white/30" style={{ fontSize: '0.45rem', letterSpacing: '0.25em' }}>NEXT</span>
+                    <span style={{ color: ACCENT, fontSize: '0.7rem' }}>▼</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full" style={{ minHeight: 'clamp(100px, 16vh, 160px)' }}>
+                <p className="heading-condensed text-white/35" style={{ fontStyle: 'italic', fontSize: 'clamp(0.85rem, 1.15vw, 1.05rem)', textAlign: 'center' }}>
+                  {data?.parts && data.parts.length > 0
+                    ? '— Click on the character to begin —'
+                    : '— No dialogues configured —'}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className={`fixed bottom-2 left-0 right-0 z-[5] flex justify-between items-center ${mounted ? 'animate-fade-slide-up stagger-4' : 'opacity-0'}`}
+        style={{ padding: '0 clamp(64px, 9vw, 100px)' }}>
+        <span className="label-caps text-white/15" style={{ fontSize: '0.45rem', letterSpacing: '0.3em' }}>SOMBRE</span>
+        <span className="heading-condensed text-white/25" style={{ fontStyle: 'italic', fontSize: '0.6rem' }}>Foreword</span>
       </div>
     </div>
   )
