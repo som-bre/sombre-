@@ -15,7 +15,7 @@ const EXTRAS = [
   { label: 'Rebuttal', by: 'Dylan', href: '/rebuttal', vx: 80, vy: 78, rot: 1 },
 ]
 
-function SvgDefs({ turbRef }: { turbRef: React.RefObject<SVGFETurbulenceElement | null> }) {
+function SvgDefs({ turbRef }: { turbRef: React.MutableRefObject<SVGFETurbulenceElement | null> }) {
   return (
     <svg style={{ position: 'absolute', width: 0, height: 0 }}>
       <defs>
