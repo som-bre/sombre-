@@ -1,16 +1,7 @@
-import { createClient, VercelKV } from '@vercel/kv'
+import { createClient } from '@vercel/kv'
 
-// Vercel KV 환경 변수 사용
-const kvUrl = process.env.KV_REST_API_URL || process.env.same1_KV_REST_API_URL
-const kvToken = process.env.KV_REST_API_TOKEN || process.env.same1_KV_REST_API_TOKEN
-
-// 더미 KV 클라이언트 (환경 변수 없을 때 빌드 통과용)
-const dummyKv = {
-  get: async <T = unknown>(): Promise<T | null> => null,
-  set: async (): Promise<'OK'> => 'OK',
-  del: async (): Promise<number> => 0,
-} as unknown as VercelKV
-
-export const kv: VercelKV = (kvUrl && kvToken)
-  ? createClient({ url: kvUrl, token: kvToken })
-  : dummyKv
+// same1_ 이 붙은 변수를 사용해서 DB 연결을 수동으로 설정합니다.
+export const kv = createClient({
+  url: process.env.same1_KV_REST_API_URL!,
+  token: process.env.same1_KV_REST_API_TOKEN!,
+})

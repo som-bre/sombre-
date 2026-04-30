@@ -8,27 +8,28 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        pink: {
-          DEFAULT: '#ff99bb',
-          soft: '#ffd6e5',
-          deep: '#cc6f90',
+        crimson: {
+          DEFAULT: '#8B1538',
+          dark: '#6A1030',
+          light: '#A62045',
         },
-        dylan: {
-          DEFAULT: '#2a2a2f',
-          light: '#4a4a55',
-          accent: '#8888aa',
-        },
-        manon: '#ff99bb',
+        sadham: '#5E7B97',
+        media: '#8B1538',
         bg: {
-          DEFAULT: '#fff5f7',
-          dark: '#0d0d0f',
+          DEFAULT: '#EFEFEF',
+          cream: '#F5F2EE',
+        },
+        ink: {
+          DEFAULT: '#2d2d2d',
+          light: '#666',
+          faint: '#999',
         },
       },
       fontFamily: {
-        display: ['Cinzel', 'serif'],
+        display: ['Playfair Display', 'Noto Serif KR', 'serif'],
+        serif: ['Noto Serif KR', 'Gowun Batang', 'serif'],
         body: ['Pretendard Variable', 'Pretendard', 'sans-serif'],
-        accent: ['Gowun Batang', 'Jeju Myeongjo', 'serif'],
-        mono: ['Space Mono', 'ui-monospace', 'monospace'],
+        accent: ['Gowun Batang', 'serif'],
       },
     },
   },

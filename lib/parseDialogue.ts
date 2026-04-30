@@ -10,6 +10,8 @@ export interface Section {
   id: string
   title: string
   lines: DialogueLine[]
+  mediaAvatar?: string    // 이 섹션에서 메디아의 아바타 이미지
+  sadhamAvatar?: string   // 이 섹션에서 사드함의 아바타 이미지
 }
 
 export interface Phase {
@@ -29,7 +31,7 @@ export interface DialogueRecord {
 // --- TRPG 타입 정의 ---
 export interface TRPGLine {
   id: string
-  type: 'narration' | 'dialogue' | 'roll' | 'system'
+  type: 'narration' | 'dialogue' | 'roll' | 'system' | 'emote' | 'diceroll' | 'madness'
   speaker?: string
   text: string
   images?: string[]
@@ -39,12 +41,25 @@ export interface TRPGLine {
     rolled: number
     result: 'critical' | 'extreme' | 'hard' | 'success' | 'fail' | 'fumble'
   }
+  diceData?: {
+    formula: string
+    dice: { value: number; sides: number; crit?: 'success' | 'fail' }[]
+    total: number
+  }
+  madnessData?: {
+    title: string
+    effectName: string
+    effectDesc: string
+    rounds?: number
+    duration?: number
+  }
 }
 
 export interface TRPGCharacter {
   name: string
   color: string
   isPC?: boolean
+  avatar?: string
 }
 
 export interface TRPGSession {
@@ -65,10 +80,10 @@ function generateId(): string {
 function normalizeSpeaker(speaker: string): string {
   const normalized = speaker.trim()
   const nameMap: Record<string, string> = {
-    '딜런': '딜런',
-    '딜런 눈': '딜런',
-    '마농': '마농',
-    '마농 아우렐리우스': '마농',
+    '사드함': '사드함',
+    '사드함 눈': '사드함',
+    '메디아': '메디아',
+    '메디아 아우렐리우스': '메디아',
   }
   return nameMap[normalized] || normalized
 }

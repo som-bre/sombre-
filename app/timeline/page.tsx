@@ -1,116 +1,225 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+
+const menuItems = [
+  { href: '/', label: '서장', chapter: 'CHAPTER ONE', en: 'Prologue', page: '01' },
+  { href: '/character', label: '캐릭터', chapter: 'CHAPTER TWO', en: 'Characters', page: '03' },
+  { href: '/record', label: '기록', chapter: 'CHAPTER THREE', en: 'Records', page: '05' },
+  { href: '/timeline', label: '연대기', chapter: 'CHAPTER FOUR', en: 'Timeline', page: '07' },
+]
+
 export default function TimelinePage() {
+  const [mounted, setMounted] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
   const events = [
     {
-      era: '7학년',
-      title: '호그와트에서의 만남',
-      period: '1988-1989',
-      desc: '슬리데린의 마농 브레슈와 그리핀도르의 딜런 토리 섬너. 서로 다른 기숙사, 서로 다른 세계에서 온 두 사람의 이야기가 시작되다.',
+      era: '0차',
+      title: '대화1',
+      period: '11—13',
+      desc: '가나다라마바사',
     },
     {
-      era: '졸업 후',
-      title: '각자의 길',
-      period: '1989-',
-      desc: '마농은 파리 오페라 발레단으로, 딜런은 지팡이 장인의 길로. 멀어진 거리만큼 깊어지는 마음.',
-    },
-    {
-      era: '현재',
-      title: '함께하는 시간',
-      period: '현재',
-      desc: '마농 브레슈(섬너)와 딜런 토리 섬너. 그리고 그들의 아이, 루드베키아 섬너.',
+      era: '0차',
+      title: '대화2',
+      period: '11—13',
+      desc: '가나다라마바사',
     },
     {
       era: '???',
-      title: 'To be continued...',
-      desc: '아직 끝나지 않은 이야기. 두 사람의 여정은 계속된다.',
+      title: 'To be continued',
+      desc: '가나다라마바사',
       future: true,
     },
   ]
 
   return (
-    <div className="min-h-screen bg-[#0d0d0f]">
-      {/* Aura 배경 효과 */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div 
-          className="absolute inset-x-[-10vw] top-[-20vh] h-[55vh] opacity-70"
-          style={{
-            background: `
-              radial-gradient(120% 90% at 50% 0%, rgba(255,153,187,0.1) 0%, transparent 60%),
-              radial-gradient(120% 90% at 90% 10%, rgba(255,204,221,0.08) 0%, transparent 60%)
-            `,
-            filter: 'blur(40px) saturate(110%)',
-            maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.85), transparent)',
-            WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.85), transparent)'
-          }}
-        />
-      </div>
+    <div className="fixed inset-0 z-[60] bg-bg overflow-hidden">
 
-      {/* Header */}
-      <header className="relative z-10 p-12 md:p-16">
-        <span className="text-xs text-white/35 tracking-wider font-mono">03</span>
-        <h1 className="font-display text-4xl md:text-5xl text-white tracking-[0.1em] mt-2">
-          Timeline
-        </h1>
-        <p className="font-accent text-white/45 mt-2">연대기</p>
-      </header>
+      {/* ═══ 내지 레이아웃 선 (세로만) ═══ */}
+      <div className="fixed pointer-events-none z-[1]" style={{ left: 'clamp(28px, 3vw, 48px)', top: 0, bottom: 0, width: 0, borderLeft: '0.5px dashed rgba(20, 20, 20, 0.1)' }} />
+      <div className="fixed pointer-events-none z-[1]" style={{ right: 'clamp(28px, 3vw, 48px)', top: 0, bottom: 0, width: 0, borderLeft: '0.5px dashed rgba(20, 20, 20, 0.1)' }} />
+      <div className="fixed pointer-events-none z-[1]" style={{ left: '50%', top: 0, bottom: 0, width: 0, borderLeft: '0.5px solid rgba(20, 20, 20, 0.15)' }} />
+      <div className="fixed pointer-events-none z-[1]" style={{ left: 'calc(50% - clamp(28px, 3vw, 48px))', top: 0, bottom: 0, width: 0, borderLeft: '0.5px dashed rgba(20, 20, 20, 0.1)' }} />
+      <div className="fixed pointer-events-none z-[1]" style={{ left: 'calc(50% + clamp(28px, 3vw, 48px))', top: 0, bottom: 0, width: 0, borderLeft: '0.5px dashed rgba(20, 20, 20, 0.1)' }} />
 
-      {/* Timeline */}
-      <div className="max-w-[700px] mx-auto px-6 py-8 pl-16 relative z-10">
-        {/* Line */}
-        <div 
-          className="absolute left-[18px] md:left-[calc(50%-350px+18px)] top-0 bottom-0 w-px"
-          style={{
-            background: 'linear-gradient(to bottom, #ff99bb 0%, #cc6f90 50%, rgba(255,255,255,0.15) 100%)'
-          }}
-        />
+      {/* ═══ 햄버거 메뉴 버튼 ═══ */}
+      <button
+        onClick={() => setMenuOpen(true)}
+        className="fixed top-5 right-5 z-[80] w-9 h-9 flex flex-col items-center justify-center gap-[5px] group"
+        aria-label="Menu"
+      >
+        <span className="block w-5 h-px bg-ink/30 group-hover:bg-ink/60 transition-colors" />
+        <span className="block w-5 h-px bg-ink/30 group-hover:bg-ink/60 transition-colors" />
+        <span className="block w-5 h-px bg-ink/30 group-hover:bg-ink/60 transition-colors" />
+      </button>
 
-        {/* Events */}
-        <div className="space-y-8">
-          {events.map((event, index) => (
-            <div key={index} className="relative pl-10">
-              {/* Marker */}
-              <div 
-                className={`absolute left-0 top-1 w-[9px] h-[9px] rounded-full border-2 border-[#0d0d0f] ${
-                  event.future 
-                    ? 'bg-transparent border-white/25' 
-                    : 'bg-[#ff99bb] shadow-[0_0_8px_rgba(255,153,187,0.5)]'
-                }`}
-              />
+      {/* ═══ 챕터 메뉴 오버레이 ═══ */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center" onClick={() => setMenuOpen(false)}>
+          <div className="absolute inset-0 bg-[#141414]/95 backdrop-blur-sm" />
+          <div className="relative z-10 w-full max-w-lg px-8" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setMenuOpen(false)}
+              className="absolute -top-12 right-0 text-white/30 hover:text-white/70 transition-colors label-caps"
+              style={{ fontSize: '0.55rem', letterSpacing: '0.2em' }}
+            >
+              CLOSE
+            </button>
+            <div className="mb-12 text-center">
+              <span className="label-caps text-white/15" style={{ fontSize: '0.5rem', letterSpacing: '0.25em' }}>TABLE OF CONTENTS</span>
+            </div>
+            <div className="space-y-0">
+              {menuItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="group block py-5 border-b border-white/[0.06] first:border-t transition-colors hover:bg-white/[0.02]"
+                >
+                  <div className="flex items-baseline justify-between gap-6">
+                    <div className="flex items-baseline gap-5">
+                      <span className="label-caps text-white/15 shrink-0" style={{ fontSize: '0.45rem', letterSpacing: '0.15em', minWidth: '1.5rem' }}>
+                        {item.page}
+                      </span>
+                      <div>
+                        <span className="heading-condensed text-white/25 text-xs" style={{ fontStyle: 'italic', letterSpacing: '0.08em' }}>
+                          {item.chapter}
+                        </span>
+                        <h3 className="heading-display text-[clamp(1.3rem,3vw,1.8rem)] text-white/80 group-hover:text-white transition-colors leading-tight mt-1">
+                          {item.label}
+                        </h3>
+                      </div>
+                    </div>
+                    <span className="heading-condensed text-white/15 text-sm shrink-0" style={{ fontStyle: 'italic' }}>
+                      {item.en}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-12 text-center">
+              <span className="label-caps text-white/10" style={{ fontSize: '0.45rem', letterSpacing: '0.2em' }}>SAME &middot; 毒眼經</span>
+            </div>
+          </div>
+        </div>
+      )}
 
-              {/* Content */}
-              <div 
-                className={`p-5 border rounded-xl transition-all duration-300 hover:bg-white/[0.04] ${
-                  event.future 
-                    ? 'bg-transparent border-dashed border-white/[0.06]' 
-                    : 'bg-white/[0.025] border-white/[0.06] hover:border-[#ff99bb]/50'
-                }`}
-              >
-                <span className="font-mono text-[0.68rem] font-semibold text-[#ff99bb] tracking-[0.04em]">
-                  {event.era}
-                </span>
-                <h3 className={`font-body text-lg font-semibold text-white mt-1 mb-1 ${
-                  event.future ? 'italic text-white/45 font-normal' : ''
-                }`}>
-                  {event.title}
-                </h3>
-                {event.period && (
-                  <p className="text-xs text-white/35 mb-2">{event.period}</p>
-                )}
-                <p className="font-accent text-sm text-white/55 leading-relaxed">
-                  {event.desc}
-                </p>
+      {/* ═══ 메인 컨텐츠 ═══ */}
+      <div className="h-full w-full flex flex-col" style={{
+        padding: 'clamp(28px, 3vw, 48px)',
+      }}>
+
+        <div className="flex-1 flex min-h-0" style={{
+          paddingTop: 'clamp(28px, min(3vw, 5vh), 48px)',
+        }}>
+
+          {/* ── 왼쪽 페이지 ── */}
+          <div className="flex-1 flex flex-col min-h-0" style={{ paddingLeft: 'clamp(6px, 0.8vw, 14px)', paddingRight: 'clamp(28px, 3vw, 48px)' }}>
+
+            <div className={mounted ? 'animate-fade-slide-up' : 'opacity-0'} style={{ marginBottom: 'clamp(12px, min(2vw, 3.2vh), 28px)' }}>
+              <span className="heading-condensed text-ink/30" style={{
+                fontSize: 'clamp(1rem, min(1.5vw, 2.4vh), 1.5rem)',
+                letterSpacing: '-0.02em',
+              }}>
+                Chapter 04
+              </span>
+            </div>
+
+            <div className={mounted ? 'animate-fade-slide-up stagger-1' : 'opacity-0'}>
+              <h1 className="heading-display text-ink leading-[0.92]" style={{
+                fontSize: 'clamp(2.5rem, min(5vw, 8vh), 4.5rem)',
+                letterSpacing: '-0.03em',
+                marginBottom: 'clamp(4px, 0.5vw, 10px)',
+              }}>
+                Timeline
+              </h1>
+              <p className="heading-condensed text-ink/35" style={{
+                fontSize: 'clamp(1rem, min(1.8vw, 2.9vh), 1.5rem)',
+              }}>
+                인과의 수레바퀴
+              </p>
+            </div>
+
+            <div className="flex-1" />
+
+            <div className={mounted ? 'animate-fade-slide-up stagger-3' : 'opacity-0'}>
+              <span className="heading-display text-ink/[0.03] leading-[0.85] block text-right" style={{
+                fontSize: 'clamp(4rem, min(10vw, 13vh), 9rem)',
+                fontStyle: 'italic',
+              }}>
+                연대기
+              </span>
+            </div>
+          </div>
+
+          {/* ── 오른쪽 페이지 ── */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ paddingLeft: 'clamp(40px, 5vw, 80px)', paddingRight: 'clamp(6px, 0.8vw, 14px)' }}>
+
+            <div className={`label-caps text-ink/20 mb-6 flex items-center gap-3 ${mounted ? 'animate-fade-slide-up stagger-1' : 'opacity-0'}`}>
+              <span className="w-3 h-px bg-crimson/30" />
+              <span className="heading-condensed" style={{ fontStyle: 'italic' }}>CHAPTER FOUR,</span> TIMELINE
+            </div>
+
+            <div className={`flex-1 overflow-y-auto min-h-0 pr-2 ${mounted ? 'animate-fade-slide-up stagger-2' : 'opacity-0'}`}>
+              <div className="relative">
+                {events.map((event, index) => (
+                  <div key={index} className={`flex gap-5 ${index < events.length - 1 ? 'pb-8' : ''} ${event.future ? 'opacity-40' : ''}`}>
+                    <div className="shrink-0 w-14 text-right pt-0.5">
+                      <div className="label-caps text-crimson mb-0.5" style={{ fontSize: '0.55rem' }}>
+                        {event.era}
+                      </div>
+                      {event.period && (
+                        <div className="text-[10px] text-ink/25 font-body">
+                          {event.period}
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative flex-1">
+                      <div
+                        className="absolute left-0 top-[5px] w-[5px] h-[5px] -translate-x-[2.5px]"
+                        style={{
+                          background: event.future ? 'transparent' : '#8B1538',
+                          border: event.future ? '1px solid rgba(45,45,45,0.2)' : 'none',
+                        }}
+                      />
+                      <div className="pl-4 border-l border-ink/[0.06]">
+                        <h3 className={`font-display text-lg leading-tight mb-1.5 ${
+                          event.future ? 'heading-condensed text-ink/30' : 'text-ink'
+                        }`}>
+                          {event.title}
+                        </h3>
+                        <p className="font-serif text-sm text-ink/45 leading-relaxed" style={{ textIndent: event.future ? '0' : '1em' }}>
+                          {event.desc}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          </div>
+        </div>
+
+        {/* ═══ 하단 페이지 번호 ═══ */}
+        <div className={`shrink-0 flex ${mounted ? 'animate-fade-slide-up stagger-4' : 'opacity-0'}`} style={{
+          paddingBottom: 'clamp(4px, 0.5vw, 10px)',
+          paddingTop: 'clamp(8px, 1vw, 16px)',
+        }}>
+          <div className="flex-1" style={{ paddingLeft: 'clamp(6px, 0.8vw, 14px)' }}>
+            <span className="label-caps text-ink/25" style={{ fontSize: 'clamp(0.5rem, 0.7vw, 0.6rem)', letterSpacing: '0.15em' }}>07</span>
+          </div>
+          <div className="flex-1 flex justify-end items-center gap-1.5" style={{ paddingRight: 'clamp(6px, 0.8vw, 14px)' }}>
+            <span className="label-caps text-ink/25" style={{ fontSize: 'clamp(0.5rem, 0.7vw, 0.6rem)', letterSpacing: '0.15em' }}>08</span>
+            <span className="text-ink/15" style={{ fontSize: 'clamp(0.45rem, 0.6vw, 0.55rem)' }}>/</span>
+            <span className="heading-condensed text-ink/25" style={{ fontSize: 'clamp(0.55rem, 0.8vw, 0.65rem)', fontStyle: 'italic' }}>Timeline</span>
+          </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="relative z-10 py-12 text-center border-t border-white/[0.025] mt-16">
-        <span className="font-mono text-sm text-[#ff99bb] tracking-[0.15em]">✦ Sombre</span>
-        <p className="font-accent text-[0.82rem] text-white/35 mt-2">
-          마농 브레슈 × 딜런 토리 섬너
-        </p>
-      </footer>
     </div>
   )
 }

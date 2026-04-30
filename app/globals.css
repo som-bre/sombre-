@@ -1,28 +1,20 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css');
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Gowun+Batang:wght@400;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/earlyaccess/jejumyeongjo.css');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Gowun+Batang:wght@400;700&family=Noto+Serif+KR:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* 마농 (핑크) */
-  --color-pink: #ff99bb;
-  --color-pink-soft: #ffd6e5;
-  --color-pink-deep: #cc6f90;
-  --color-manon: #ff99bb;
-
-  /* 딜런 (다크/블랙) */
-  --color-dylan: #2a2a2f;
-  --color-dylan-light: #4a4a55;
-  --color-dylan-accent: #8888aa;
-
-  /* 배경색 */
-  --color-bg: #fff5f7;
-  --color-bg-dark: #0d0d0f;
-  
-  --sidebar-width: 260px;
+  --color-crimson: #8B1538;
+  --color-crimson-dark: #6A1030;
+  --color-crimson-light: #A62045;
+  --color-media: #8B1538;
+  --color-sadham: #5E7B97;
+  --color-bg: #EFEFEF;
+  --color-bg-cream: #F5F2EE;
+  --color-ink: #2d2d2d;
+  --topbar-height: 44px;
 }
 
 * {
@@ -36,64 +28,259 @@ html {
 }
 
 body {
-  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 15px;
-  line-height: 1.65;
-  letter-spacing: -0.02em;
-  background-color: var(--color-bg-dark); /* 기본 배경색 지정 */
-  color: white; /* 기본 글자색 지정 */
+  font-family: 'Noto Serif KR', 'Gowun Batang', serif;
+  font-size: 16px;
+  line-height: 1.75;
+  letter-spacing: -0.01em;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 커스텀 스크롤바 디자인 */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--color-pink-deep), var(--color-pink));
-  border-radius: 3px;
+  background: rgba(45, 45, 45, 0.15);
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, var(--color-pink), var(--color-pink-soft));
+  background: rgba(45, 45, 45, 0.3);
 }
 
-/* 드래그 선택 시 색상 */
 ::selection {
-  background: rgba(255, 153, 187, 0.3); /* 핑크 틴트 */
-  color: #fff;
+  background: rgba(139, 21, 56, 0.12);
+  color: var(--color-ink);
 }
 
-/* 애니메이션 키프레임 */
-@keyframes sparkle {
-  0%, 100% { opacity: 0; transform: scale(0.8) rotate(0deg); }
-  50% { opacity: 1; transform: scale(1) rotate(180deg); }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(255, 153, 187, 0.3); }
-  50% { box-shadow: 0 0 30px rgba(255, 153, 187, 0.6); }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+/* Custom cursor — hide default on hover-capable devices */
+@media (hover: hover) {
+  .custom-cursor-active,
+  .custom-cursor-active * {
+    cursor: none !important;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+}
+
+/* Editorial heading styles */
+.heading-display {
+  font-family: 'Playfair Display', 'Noto Serif KR', serif;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+.heading-condensed {
+  font-family: 'Playfair Display', 'Noto Serif KR', serif;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.02em;
+}
+
+.text-editorial {
+  font-family: 'Noto Serif KR', 'Gowun Batang', serif;
+  line-height: 1.8;
+  text-align: justify;
+  word-break: keep-all;
+}
+
+.label-caps {
+  font-family: 'Pretendard Variable', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ═══════════ Stripe Press hover effects ═══════════ */
+
+/* Dark highlight hover - Stripe Press signature effect
+   On hover: black background, white text, italic, ° prefix */
+.sp-hover {
+  position: relative;
+  display: inline-block;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  transition: background 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+}
+.sp-hover:hover {
+  background: var(--color-ink);
+  color: #EFEFEF;
+  font-style: italic;
+}
+.sp-hover::before {
+  content: '';
+  transition: opacity 0.2s ease;
+  opacity: 0;
+}
+.sp-hover:hover::before {
+  content: '° ';
+  opacity: 1;
+}
+
+/* Lighter highlight hover (for authors/characters) */
+.sp-hover-light {
+  position: relative;
+  display: inline-block;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+.sp-hover-light:hover {
+  background: rgba(94, 123, 151, 0.15);
+}
+.sp-hover-light.crimson:hover {
+  background: rgba(139, 21, 56, 0.1);
+}
+
+/* Chapter number expand + marquee on hover */
+.chapter-number {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  overflow: hidden;
+  cursor: pointer;
+}
+.chapter-number .chapter-title {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  padding-left: 12px;
+}
+.chapter-number:hover .chapter-title {
+  opacity: 1;
+  animation: chapterMarquee 8s linear infinite;
+}
+
+@keyframes chapterMarquee {
+  0% { transform: translateY(-50%) translateX(0); }
+  100% { transform: translateY(-50%) translateX(-100%); }
+}
+
+/* Smooth group hover for list items with shift */
+.hover-shift {
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              opacity 0.3s ease,
+              color 0.3s ease;
+}
+.group:hover .hover-shift {
+  transform: translateX(8px);
+}
+.group:hover .hover-shift-number {
+  transform: translateX(-4px);
+  opacity: 0.6;
+}
+
+/* Fade and slide in from bottom */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-slide-up {
+  animation: fadeSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  opacity: 0;
+}
+
+/* Stagger animation delays */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+.stagger-7 { animation-delay: 0.35s; }
+
+/* Quote marks animate */
+@keyframes quoteReveal {
+  from { opacity: 0; transform: translateY(10px) scale(0.8); }
+  to { opacity: 0.15; transform: translateY(0) scale(1); }
+}
+.quote-mark {
+  animation: quoteReveal 0.8s ease forwards;
+}
+
+/* Highlight sweep — black bg sweeps left to right like a highlighter */
+@keyframes highlightSweep {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+.animate-highlight-sweep {
+  animation: highlightSweep 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* Author name theme colors — turn white on parent hover */
+.name-crimson { color: var(--color-crimson); }
+.name-sadham { color: var(--color-sadham); }
+button:hover .name-crimson,
+button:hover .name-sadham { color: #EFEFEF; }
+
+/* Slide author link — text turns white on hover */
+.slide-author { transition: color 0.2s ease; }
+.slide-author:hover { color: #EFEFEF; }
+.slide-author:hover .slide-by { color: #EFEFEF; opacity: 0.5; }
+
+/* Hover line sweep */
+.hover-line-reveal {
+  position: relative;
+}
+.hover-line-reveal::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-crimson);
+  transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.hover-line-reveal:hover::after {
+  width: 100%;
+}
+
+/* ═══════════ Sketch jitter (hand-drawn frame-by-frame) ═══════════ */
+@keyframes sketchJitter {
+  0%   { transform: translate(0px, 0px) rotate(0deg); }
+  20%  { transform: translate(-0.4px, 0.3px) rotate(-0.18deg); }
+  40%  { transform: translate(0.35px, -0.4px) rotate(0.12deg); }
+  60%  { transform: translate(-0.3px, -0.15px) rotate(0.22deg); }
+  80%  { transform: translate(0.45px, 0.35px) rotate(-0.1deg); }
+  100% { transform: translate(0px, 0px) rotate(0deg); }
+}
+
+@keyframes sketchJitterLine {
+  0%   { transform: translate(0px, 0px); }
+  25%  { transform: translate(-0.6px, 0.4px); }
+  50%  { transform: translate(0.5px, -0.5px); }
+  75%  { transform: translate(-0.4px, -0.3px); }
+  100% { transform: translate(0px, 0px); }
+}
+
+.sketch-jitter {
+  animation: sketchJitter 0.5s steps(5) infinite;
+}
+
+.sketch-jitter-line {
+  animation: sketchJitterLine 0.4s steps(4) infinite;
 }
