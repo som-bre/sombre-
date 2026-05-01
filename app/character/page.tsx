@@ -219,7 +219,7 @@ export default function CharacterPage() {
             <span className="absolute inset-1 pointer-events-none" style={{ border: `1px solid ${accentColor}10` }} />
             {data.profileImage ? (
               <img src={data.profileImage} alt={data.nameKr}
-                className="absolute inset-0 w-full h-full object-cover" />
+                className="absolute inset-0 w-full h-full object-cover object-top" />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="font-display select-none leading-none" style={{
