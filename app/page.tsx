@@ -274,10 +274,10 @@ function StageDrawing() {
 }
 
 // ── Stage text content (still) ──
-function StageContent({ color, dim, router, hovered, onHover, onArchive, isOverlay }: {
+function StageContent({ color, dim, router, hovered, onHover, onArchive, isOverlay, isAdmin }: {
   color: string; dim: string; router: any
   hovered: number | null; onHover: (i: number | null) => void
-  onArchive: () => void; isOverlay?: boolean
+  onArchive: () => void; isOverlay?: boolean; isAdmin?: boolean
 }) {
   const El = isOverlay ? 'div' : 'button'
 
@@ -396,16 +396,29 @@ function StageContent({ color, dim, router, hovered, onHover, onArchive, isOverl
         }}>Admin</span>
       </El>
 
-      {/* ── Twitter ── */}
-      <El {...(!isOverlay && { onClick: () => window.open('https://x.com/4rgonautika', '_blank') })}
-        className={isOverlay ? '' : 'cursor-pointer'}
-        style={{
-          position: 'absolute', right: 'clamp(20px, 3vw, 40px)', bottom: '3%',
-          background: 'none', border: 'none', color: dim, opacity: 0.25,
-          fontSize: 'clamp(0.44rem, 0.55vw, 0.5rem)',
-          fontFamily: "'Pretendard Variable', sans-serif",
-          letterSpacing: '0.15em', textTransform: 'uppercase' as const,
-        }}>Twitter</El>
+      {/* ── Bottom links ── */}
+      <div className="absolute flex items-center gap-4" style={{
+        right: 'clamp(20px, 3vw, 40px)', bottom: '3%',
+      }}>
+        {isAdmin && (
+          <El {...(!isOverlay && { onClick: () => router.push('/sheets') })}
+            className={isOverlay ? '' : 'cursor-pointer'}
+            style={{
+              background: 'none', border: 'none', color: dim, opacity: 0.35,
+              fontSize: 'clamp(0.44rem, 0.55vw, 0.5rem)',
+              fontFamily: "'Pretendard Variable', sans-serif",
+              letterSpacing: '0.15em', textTransform: 'uppercase' as const,
+            }}>Sheets</El>
+        )}
+        <El {...(!isOverlay && { onClick: () => window.open('https://x.com/4rgonautika', '_blank') })}
+          className={isOverlay ? '' : 'cursor-pointer'}
+          style={{
+            background: 'none', border: 'none', color: dim, opacity: 0.25,
+            fontSize: 'clamp(0.44rem, 0.55vw, 0.5rem)',
+            fontFamily: "'Pretendard Variable', sans-serif",
+            letterSpacing: '0.15em', textTransform: 'uppercase' as const,
+          }}>Twitter</El>
+      </div>
 
       {/* ── Quote ── */}
       <div className="absolute" style={{
@@ -435,6 +448,7 @@ export default function Home() {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
   const [showLogin, setShowLogin] = useState(false)
   const [password, setPassword] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
   const [srcX, setSrcX] = useState(400)
   const [viewH, setViewH] = useState(800)
   const turbRef = useRef<SVGFETurbulenceElement>(null)
@@ -444,6 +458,7 @@ export default function Home() {
   useEffect(() => {
     const t1 = setTimeout(() => setCurtainOpen(true), 1800)
     const t2 = setTimeout(() => setStageVisible(true), 3000)
+    setIsAdmin(localStorage?.getItem('same_admin_login') === 'true')
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
 
@@ -474,12 +489,23 @@ export default function Home() {
     return () => cancelAnimationFrame(frame)
   }, [])
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === 'same1234') {
-      localStorage?.setItem('same_admin_login', 'true')
-      router.push('/admin')
-    } else alert('비밀번호가 일치하지 않습니다.')
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      if (res.ok) {
+        localStorage?.setItem('same_admin_login', 'true')
+        router.push('/admin')
+      } else {
+        alert('비밀번호가 일치하지 않습니다.')
+      }
+    } catch {
+      alert('인증 처리 중 오류가 발생했습니다.')
+    }
   }
 
   // Perspective ellipse: shape changes based on mouse position
@@ -512,7 +538,7 @@ export default function Home() {
       <div className="absolute inset-0 transition-opacity duration-[1.5s]" style={{ opacity: stageVisible ? 1 : 0 }}>
         <StageContent color="rgba(235,235,235,0.88)" dim="rgba(235,235,235,0.3)"
           router={router} hovered={hoveredIdx} onHover={setHoveredIdx}
-          onArchive={() => setShowLogin(true)} />
+          onArchive={() => setShowLogin(true)} isAdmin={isAdmin} />
       </div>
 
       {/* ── Spotlight ── */}
@@ -553,7 +579,7 @@ export default function Home() {
           style={{ WebkitMaskImage: mask, maskImage: mask }}>
           <StageContent color="#FF6B9D" dim="rgba(255,107,157,0.5)"
             router={router} hovered={hoveredIdx} onHover={() => {}}
-            onArchive={() => {}} isOverlay />
+            onArchive={() => {}} isOverlay isAdmin={isAdmin} />
         </div>
       )}
 

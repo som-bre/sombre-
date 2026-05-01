@@ -1313,7 +1313,7 @@ export default function AdminPage() {
       <div className="min-h-screen bg-bg flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-bg-cream border border-ink/10 rounded-lg p-8">
           <h1 className="font-display text-center text-[#8B1538] mb-6">ADMIN ACCESS</h1>
-          <form onSubmit={(e) => { e.preventDefault(); if (password === "same1234") { setIsLoggedIn(true); localStorage.setItem('same_admin_login', 'true') } else alert('비밀번호 불일치') }}>
+          <form onSubmit={async (e) => { e.preventDefault(); try { const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); if (res.ok) { setIsLoggedIn(true); localStorage.setItem('same_admin_login', 'true') } else alert('비밀번호 불일치') } catch { alert('인증 오류') } }}>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               className="w-full bg-white/60 border border-ink/10 rounded px-4 py-3 text-ink focus:outline-none focus:border-[#8B1538] mb-4 placeholder-ink/40" placeholder="비밀번호" />
             <button type="submit" className="w-full bg-[#8B1538] hover:bg-[#A01840] text-white py-3 rounded">로그인</button>

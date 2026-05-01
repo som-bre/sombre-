@@ -13,7 +13,6 @@ export default function AUPage() {
   const [mounted, setMounted] = useState(false)
   const [aus, setAUs] = useState<AU[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedAU, setSelectedAU] = useState<AU | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -30,13 +29,8 @@ export default function AUPage() {
       <EdgeCurtain side="left" />
       <EdgeCurtain side="right" />
 
-      <div className="fixed pointer-events-none z-[3] sketch-jitter-line" style={{
-        top: 'clamp(28px, 3vw, 48px)', left: '7%', right: '7%', height: '1px',
-        background: 'rgba(255,255,255,0.1)', filter: 'url(#sketchy)',
-      }} />
-
       {/* Header */}
-      <div className={`fixed top-0 left-0 right-0 z-[10] flex items-center justify-between ${mounted ? 'animate-fade-slide-up' : 'opacity-0'}`}
+      <div className={`fixed top-0 left-0 z-[10] right-0 flex items-center justify-between ${mounted ? 'animate-fade-slide-up' : 'opacity-0'}`}
         style={{ padding: 'clamp(28px, 3vw, 44px) clamp(40px, 6vw, 80px) 0' }}>
         <button onClick={() => router.push('/')}
           className="label-caps text-white/40 hover:text-white/80 transition-colors"
@@ -52,14 +46,14 @@ export default function AUPage() {
         </div>
       </div>
 
-      {/* Card grid */}
+      {/* Scrollable card area — inside curtains */}
       <div className="absolute inset-0 overflow-y-auto" style={{
         paddingTop: 'clamp(72px, 9vw, 110px)',
         paddingBottom: 'clamp(32px, 4vh, 60px)',
-        paddingLeft: 'clamp(24px, 5vw, 64px)',
-        paddingRight: 'clamp(24px, 5vw, 64px)',
+        paddingLeft: '8%',
+        paddingRight: '8%',
         scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(255,255,255,0.1) transparent',
+        scrollbarColor: 'rgba(255,255,255,0.08) transparent',
       }}>
         {loading ? (
           <div className="flex items-center justify-center h-40">
@@ -70,295 +64,175 @@ export default function AUPage() {
         ) : (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(clamp(200px, 22vw, 280px), 1fr))',
-            gap: 'clamp(12px, 1.8vw, 24px)',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))',
+            gap: 'clamp(16px, 2vw, 28px)',
           }}>
             {aus.map((au, idx) => (
-              <AUCard key={au.id} au={au} idx={idx} onClick={() => setSelectedAU(au)} />
+              <AUCard key={au.id} au={au} idx={idx} />
             ))}
           </div>
         )}
       </div>
-
-      {/* Detail modal */}
-      {selectedAU && (
-        <AUModal au={selectedAU} onClose={() => setSelectedAU(null)} />
-      )}
     </div>
   )
 }
 
-function AUCard({ au, idx, onClick }: { au: AU; idx: number; onClick: () => void }) {
-  const accent = au.themeColor || MANON_COLOR
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="text-left group transition-all duration-300"
-      style={{
-        background: hovered ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.015)',
-        border: `1px solid ${hovered ? accent + '50' : 'rgba(255,255,255,0.1)'}`,
-        padding: '0',
-        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
-        boxShadow: hovered ? `0 8px 24px rgba(0,0,0,0.4), 0 0 12px ${accent}15` : 'none',
-      }}
-    >
-      {/* Character portraits row */}
-      <div className="flex h-[120px] relative overflow-hidden">
-        {/* Manon side */}
-        <div className="flex-1 relative overflow-hidden" style={{ background: `${MANON_COLOR}08` }}>
-          {au.manon.image ? (
-            <img src={au.manon.image} alt={au.manon.name || 'Manon'}
-              className="absolute inset-0 w-full h-full object-cover object-top"
-              style={{ opacity: 0.85 }} />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="heading-display" style={{
-                color: `${MANON_COLOR}30`,
-                fontSize: '2.5rem', fontStyle: 'italic',
-              }}>
-                {(au.manon.name || 'M').charAt(0)}
-              </span>
-            </div>
-          )}
-          {/* Name overlay */}
-          <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5"
-            style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}>
-            <span style={{
-              fontFamily: "'Playfair Display', serif",
-              fontStyle: 'italic', fontSize: '0.65rem',
-              color: MANON_COLOR, opacity: 0.9,
-            }}>
-              {au.manon.name || 'Manon'}
-            </span>
-          </div>
-        </div>
-
-        {/* Center divider + relationship */}
-        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          <div style={{
-            background: 'rgba(0,0,0,0.75)',
-            padding: '3px 8px',
-            border: `1px solid ${accent}40`,
-          }}>
-            <span className="heading-display" style={{
-              color: accent,
-              fontSize: '0.7rem',
-              fontStyle: 'italic',
-              whiteSpace: 'nowrap',
-            }}>
-              {au.relationship || '—'}
-            </span>
-          </div>
-        </div>
-
-        {/* Dylan side */}
-        <div className="flex-1 relative overflow-hidden" style={{ background: `${DYLAN_COLOR}06` }}>
-          {au.dylan.image ? (
-            <img src={au.dylan.image} alt={au.dylan.name || 'Dylan'}
-              className="absolute inset-0 w-full h-full object-cover object-top"
-              style={{ opacity: 0.85 }} />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="heading-display" style={{
-                color: `${DYLAN_COLOR}30`,
-                fontSize: '2.5rem', fontStyle: 'italic',
-              }}>
-                {(au.dylan.name || 'D').charAt(0)}
-              </span>
-            </div>
-          )}
-          <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5"
-            style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', textAlign: 'right' }}>
-            <span style={{
-              fontFamily: "'Playfair Display', serif",
-              fontStyle: 'italic', fontSize: '0.65rem',
-              color: DYLAN_COLOR, opacity: 0.9,
-            }}>
-              {au.dylan.name || 'Dylan'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Card info */}
-      <div style={{ padding: '10px 12px 12px' }}>
-        <div className="flex items-baseline gap-2 mb-0.5">
-          <span className="label-caps" style={{
-            fontSize: '0.38rem', letterSpacing: '0.2em',
-            color: 'rgba(255,255,255,0.25)',
-          }}>
-            {String(idx + 1).padStart(2, '0')}
-          </span>
-          {au.themeColor && (
-            <span style={{
-              display: 'inline-block', width: '6px', height: '6px',
-              borderRadius: '50%', background: au.themeColor, opacity: 0.7,
-            }} />
-          )}
-        </div>
-        <h3 className="heading-display" style={{
-          fontSize: 'clamp(0.9rem, 1.3vw, 1.1rem)',
-          color: 'rgba(255,255,255,0.88)',
-          fontStyle: 'italic', lineHeight: 1.2,
-        }}>
-          {au.title}
-        </h3>
-        {au.subtitle && (
-          <p className="heading-condensed mt-0.5" style={{
-            fontSize: '0.68rem',
-            color: 'rgba(255,255,255,0.35)',
-            fontStyle: 'italic',
-          }}>
-            {au.subtitle}
-          </p>
-        )}
-      </div>
-    </button>
-  )
-}
-
-function AUModal({ au, onClose }: { au: AU; onClose: () => void }) {
+function AUCard({ au, idx }: { au: AU; idx: number }) {
   const accent = au.themeColor || MANON_COLOR
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8"
-      style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(6px)' }}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-3xl flex flex-col md:flex-row overflow-hidden animate-fade-in"
-        style={{
-          background: 'rgba(6,6,6,0.98)',
-          border: `1px solid ${accent}30`,
-          maxHeight: '85vh',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-4 text-white/30 hover:text-white/70 transition-colors z-10"
-          style={{ fontSize: '1rem', position: 'absolute' }}
-        >
-          ✕
-        </button>
+    <div className="relative" style={{
+      background: 'rgba(255,255,255,0.02)',
+      border: '1px solid rgba(255,255,255,0.08)',
+    }}>
+      {/* Top accent bar */}
+      <div style={{ height: '3px', background: accent, opacity: 0.7 }} />
 
-        {/* Manon card */}
-        <CharacterPanel
-          name={au.manon.name || 'Manon'}
-          image={au.manon.image}
-          dialogue={au.manon.dialogue}
-          color={MANON_COLOR}
-          align="left"
-        />
-
-        {/* Center: title + relationship */}
-        <div className="flex flex-col items-center justify-center px-4 md:px-6 py-6 md:py-0"
-          style={{
-            minWidth: '120px',
-            borderLeft: `1px solid rgba(255,255,255,0.06)`,
-            borderRight: `1px solid rgba(255,255,255,0.06)`,
-            gap: '16px',
-          }}>
-          <span className="block w-px h-12 sketch-jitter-line"
-            style={{ background: 'rgba(255,255,255,0.15)', filter: 'url(#sketchy)' }} />
-          <div className="text-center px-2">
-            <p className="label-caps mb-1" style={{
-              fontSize: '0.4rem', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.25)',
-            }}>
-              {au.subtitle || 'AU'}
-            </p>
-            <h2 className="heading-display" style={{
-              fontSize: 'clamp(0.9rem, 1.5vw, 1.2rem)',
-              color: accent, fontStyle: 'italic',
-              whiteSpace: 'nowrap',
-            }}>
-              {au.relationship || '—'}
-            </h2>
-            <p className="heading-display mt-1" style={{
-              fontSize: 'clamp(0.75rem, 1.1vw, 0.95rem)',
-              color: 'rgba(255,255,255,0.7)', fontStyle: 'italic',
+      {/* Header: title + subtitle */}
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2">
+            {/* Star decoration */}
+            <svg width="10" height="10" viewBox="0 0 10 10" style={{ flexShrink: 0 }}>
+              <path d="M5,1 L5.8,3.8 L8.5,3.8 L6.3,5.5 L7.1,8.3 L5,6.7 L2.9,8.3 L3.7,5.5 L1.5,3.8 L4.2,3.8 Z"
+                fill={accent} opacity="0.5" />
+            </svg>
+            <h3 className="heading-display truncate" style={{
+              fontSize: 'clamp(1rem, 1.5vw, 1.3rem)',
+              color: 'rgba(255,255,255,0.9)',
+              fontStyle: 'italic', lineHeight: 1.2,
             }}>
               {au.title}
-            </p>
+            </h3>
           </div>
-          <span className="block w-px h-12 sketch-jitter-line"
-            style={{ background: 'rgba(255,255,255,0.15)', filter: 'url(#sketchy)' }} />
-        </div>
-
-        {/* Dylan card */}
-        <CharacterPanel
-          name={au.dylan.name || 'Dylan'}
-          image={au.dylan.image}
-          dialogue={au.dylan.dialogue}
-          color={DYLAN_COLOR}
-          align="right"
-        />
-      </div>
-    </div>
-  )
-}
-
-function CharacterPanel({
-  name, image, dialogue, color, align,
-}: {
-  name: string; image?: string; dialogue?: string; color: string; align: 'left' | 'right'
-}) {
-  return (
-    <div className="flex-1 flex flex-col min-h-0">
-      {/* Portrait */}
-      <div className="relative overflow-hidden" style={{ height: '200px', background: 'rgba(255,255,255,0.015)' }}>
-        {image ? (
-          <img src={image} alt={name}
-            className="absolute inset-0 w-full h-full object-cover object-top" />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="heading-display" style={{
-              color: `${color}25`, fontSize: '5rem', fontStyle: 'italic',
+          {au.subtitle && (
+            <p className="heading-condensed mt-0.5 pl-5" style={{
+              fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)',
+              fontStyle: 'italic',
             }}>
-              {name.charAt(0)}
-            </span>
-          </div>
-        )}
-        {/* Gradient overlay */}
-        <div className="absolute inset-0"
-          style={{ background: 'linear-gradient(transparent 50%, rgba(0,0,0,0.6) 100%)' }} />
-        <div className="absolute bottom-3 px-4" style={{ [align === 'right' ? 'right' : 'left']: 0 }}>
-          <h3 className="heading-display" style={{
-            color, fontSize: '1.1rem', fontStyle: 'italic',
+              {au.subtitle}
+            </p>
+          )}
+        </div>
+        <span className="label-caps" style={{
+          fontSize: '0.38rem', letterSpacing: '0.18em',
+          color: 'rgba(255,255,255,0.2)',
+        }}>
+          {String(idx + 1).padStart(2, '0')}
+        </span>
+      </div>
+
+      {/* Divider */}
+      <div className="mx-4 sketch-jitter-line" style={{
+        height: '1px', background: 'rgba(255,255,255,0.06)', filter: 'url(#sketchy)',
+      }} />
+
+      {/* Characters row: image + name + relationship + image + name */}
+      <div className="flex items-stretch" style={{ minHeight: '160px' }}>
+        {/* Manon (left) */}
+        <div className="flex-1 flex flex-col items-center p-3 min-w-0">
+          <div className="relative w-full flex-1 min-h-[100px] mb-2 overflow-hidden" style={{
+            border: `1px solid ${MANON_COLOR}30`,
+            background: 'rgba(255,255,255,0.01)',
           }}>
-            {name}
-          </h3>
+            {au.manon.image ? (
+              <img src={au.manon.image} alt={au.manon.name || 'Manon'}
+                className="absolute inset-0 w-full h-full object-cover object-top" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="heading-display" style={{
+                  color: `${MANON_COLOR}20`, fontSize: '3rem', fontStyle: 'italic',
+                }}>{(au.manon.name || 'M').charAt(0)}</span>
+              </div>
+            )}
+          </div>
+          <p className="heading-display text-center" style={{
+            color: MANON_COLOR, fontSize: '0.8rem', fontStyle: 'italic',
+            lineHeight: 1.2,
+          }}>{au.manon.name || 'Manon'}</p>
+        </div>
+
+        {/* Center: relationship */}
+        <div className="flex flex-col items-center justify-center px-2" style={{ minWidth: '60px' }}>
+          <span className="block w-px h-6 sketch-jitter-line" style={{
+            background: 'rgba(255,255,255,0.1)', filter: 'url(#sketchy)',
+          }} />
+          <div className="py-2 text-center">
+            <span className="heading-display" style={{
+              color: accent, fontSize: 'clamp(0.75rem, 1vw, 0.95rem)',
+              fontStyle: 'italic', whiteSpace: 'nowrap',
+            }}>{au.relationship || '—'}</span>
+          </div>
+          <span className="block w-px h-6 sketch-jitter-line" style={{
+            background: 'rgba(255,255,255,0.1)', filter: 'url(#sketchy)',
+          }} />
+        </div>
+
+        {/* Dylan (right) */}
+        <div className="flex-1 flex flex-col items-center p-3 min-w-0">
+          <div className="relative w-full flex-1 min-h-[100px] mb-2 overflow-hidden" style={{
+            border: `1px solid ${DYLAN_COLOR}25`,
+            background: 'rgba(255,255,255,0.01)',
+          }}>
+            {au.dylan.image ? (
+              <img src={au.dylan.image} alt={au.dylan.name || 'Dylan'}
+                className="absolute inset-0 w-full h-full object-cover object-top" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="heading-display" style={{
+                  color: `${DYLAN_COLOR}20`, fontSize: '3rem', fontStyle: 'italic',
+                }}>{(au.dylan.name || 'D').charAt(0)}</span>
+              </div>
+            )}
+          </div>
+          <p className="heading-display text-center" style={{
+            color: DYLAN_COLOR, fontSize: '0.8rem', fontStyle: 'italic',
+            lineHeight: 1.2,
+          }}>{au.dylan.name || 'Dylan'}</p>
         </div>
       </div>
 
-      {/* Dialogue */}
-      {dialogue && (
-        <div className="flex-1 overflow-y-auto p-4"
-          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.08) transparent' }}>
-          <div className="sketch-jitter-line mb-3" style={{
-            height: '1px', background: `${color}25`, filter: 'url(#sketchy)',
+      {/* Dialogues */}
+      {(au.manon.dialogue || au.dylan.dialogue) && (
+        <>
+          <div className="mx-4 sketch-jitter-line" style={{
+            height: '1px', background: 'rgba(255,255,255,0.06)', filter: 'url(#sketchy)',
           }} />
-          <p className="text-editorial whitespace-pre-wrap" style={{
-            color: 'rgba(255,255,255,0.72)',
-            fontSize: 'clamp(0.75rem, 1vw, 0.88rem)',
-            lineHeight: 1.8,
-            textAlign: align === 'right' ? 'right' : 'left',
-          }}>
-            {dialogue}
-          </p>
-        </div>
+          <div className="flex gap-3 p-4">
+            {/* Manon dialogue */}
+            <div className="flex-1 min-w-0">
+              {au.manon.dialogue && (
+                <div style={{
+                  padding: '8px 10px',
+                  background: `${MANON_COLOR}08`,
+                  border: `1px solid ${MANON_COLOR}18`,
+                }}>
+                  <p className="text-editorial whitespace-pre-wrap" style={{
+                    color: 'rgba(255,255,255,0.65)',
+                    fontSize: 'clamp(0.68rem, 0.85vw, 0.78rem)',
+                    lineHeight: 1.7,
+                  }}>{au.manon.dialogue}</p>
+                </div>
+              )}
+            </div>
+            {/* Dylan dialogue */}
+            <div className="flex-1 min-w-0">
+              {au.dylan.dialogue && (
+                <div style={{
+                  padding: '8px 10px',
+                  background: `${DYLAN_COLOR}06`,
+                  border: `1px solid ${DYLAN_COLOR}15`,
+                }}>
+                  <p className="text-editorial whitespace-pre-wrap" style={{
+                    color: 'rgba(255,255,255,0.65)',
+                    fontSize: 'clamp(0.68rem, 0.85vw, 0.78rem)',
+                    lineHeight: 1.7, textAlign: 'right',
+                  }}>{au.dylan.dialogue}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

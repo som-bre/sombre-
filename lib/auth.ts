@@ -26,8 +26,10 @@ export async function decrypt(token: string): Promise<any> {
 
 export async function verifyPassword(password: string): Promise<boolean> {
   const hash = process.env.ADMIN_PASSWORD_HASH
-  if (!hash) return false
-  return bcrypt.compare(password, hash)
+  if (hash) return bcrypt.compare(password, hash)
+  const plain = process.env.ADMIN_PASSWORD
+  if (plain) return password === plain
+  return false
 }
 
 export async function getSession() {
