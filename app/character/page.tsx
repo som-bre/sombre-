@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import EdgeCurtain from '@/components/EdgeCurtain'
+import SketchyFilter from '@/components/SketchyFilter'
 import { BalletRibbon, MagicSparkle } from '@/components/StageMotifs'
 
 interface PhaseData {
@@ -122,6 +123,7 @@ export default function CharacterPage() {
 
   return (
     <div className="fixed inset-0 z-[60] bg-black overflow-hidden text-white">
+      <SketchyFilter />
       <EdgeCurtain side="left" />
       <EdgeCurtain side="right" />
 
@@ -209,11 +211,10 @@ export default function CharacterPage() {
           </div>
 
           {/* Image frame */}
-          <div className={`relative flex-1 min-h-0 sketch-jitter-line ${mounted ? 'animate-fade-slide-up stagger-2' : 'opacity-0'}`}
+          <div className={`relative flex-1 min-h-0 ${mounted ? 'animate-fade-slide-up stagger-2' : 'opacity-0'}`}
             style={{
               border: `1px solid ${accentColor}35`,
               background: 'rgba(255,255,255,0.012)',
-              filter: 'url(#sketchy)',
             }}>
             <span className="absolute inset-1 pointer-events-none" style={{ border: `1px solid ${accentColor}10` }} />
             {data.profileImage ? (

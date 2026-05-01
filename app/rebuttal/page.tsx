@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import EdgeCurtain from '@/components/EdgeCurtain'
+import SketchyFilter from '@/components/SketchyFilter'
 import { MagicSparkle } from '@/components/StageMotifs'
 
 interface BodyPart {
@@ -75,7 +76,7 @@ export default function RebuttalPage() {
 
   return (
     <div className="fixed inset-0 z-[60] bg-black overflow-hidden">
-
+      <SketchyFilter />
       <EdgeCurtain side="left" />
       <EdgeCurtain side="right" />
 

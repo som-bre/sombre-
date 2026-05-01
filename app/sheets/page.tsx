@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import EdgeCurtain from '@/components/EdgeCurtain'
+import SketchyFilter from '@/components/SketchyFilter'
 import { BalletRibbon, MagicSparkle } from '@/components/StageMotifs'
 import type { Sheet, SheetsData } from '@/app/api/sheets/route'
 
@@ -43,6 +44,7 @@ export default function SheetsPage() {
 
   return (
     <div className="fixed inset-0 z-[60] bg-black overflow-hidden text-white">
+      <SketchyFilter />
       <EdgeCurtain side="left" />
       <EdgeCurtain side="right" />
 

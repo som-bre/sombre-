@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import EdgeCurtain from '@/components/EdgeCurtain'
+import SketchyFilter from '@/components/SketchyFilter'
 import type { AU, AUData } from '@/app/api/au/route'
 
 const MANON_COLOR = '#D9809A'
@@ -26,6 +27,7 @@ export default function AUPage() {
 
   return (
     <div className="fixed inset-0 z-[60] bg-black overflow-hidden text-white">
+      <SketchyFilter />
       <EdgeCurtain side="left" />
       <EdgeCurtain side="right" />
 
