@@ -130,10 +130,11 @@ function AUCard({ au, idx }: { au: AU; idx: number }) {
       }} />
 
       {/* Characters row: image + name + relationship + image + name */}
-      <div className="flex items-stretch" style={{ minHeight: '160px' }}>
+      <div className="flex items-stretch">
         {/* Manon (left) */}
         <div className="flex-1 flex flex-col items-center p-3 min-w-0">
-          <div className="relative w-full flex-1 min-h-[100px] mb-2 overflow-hidden" style={{
+          <div className="relative w-full mb-2 overflow-hidden" style={{
+            aspectRatio: '1',
             border: `1px solid ${MANON_COLOR}30`,
             background: 'rgba(255,255,255,0.01)',
           }}>
@@ -172,7 +173,8 @@ function AUCard({ au, idx }: { au: AU; idx: number }) {
 
         {/* Dylan (right) */}
         <div className="flex-1 flex flex-col items-center p-3 min-w-0">
-          <div className="relative w-full flex-1 min-h-[100px] mb-2 overflow-hidden" style={{
+          <div className="relative w-full mb-2 overflow-hidden" style={{
+            aspectRatio: '1',
             border: `1px solid ${DYLAN_COLOR}25`,
             background: 'rgba(255,255,255,0.01)',
           }}>
