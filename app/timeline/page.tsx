@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import EdgeCurtain from '@/components/EdgeCurtain'
 import type { TimelineEvent, TimelineData } from '@/app/api/timeline/route'
@@ -17,16 +17,15 @@ function getAccent(ev: TimelineEvent) {
   return { manon: MANON_COLOR, dylan: DYLAN_COLOR, both: BOTH_COLOR }[ev.character || 'both'] || BOTH_COLOR
 }
 
-// Star positions: zigzag constellation path
+// Zigzag constellation positions
 const JITTERS: [number, number][] = [
-  [4, 3], [-6, -4], [5, 6], [-4, -3], [6, 4],
-  [-3, -5], [5, -3], [-5, 4], [2, -6], [-2, 5],
-  [4, -5], [-4, 3], [5, 4], [-6, -3], [3, -4],
-  [-3, 5], [6, -4], [-5, -5], [4, 3], [-2, -4],
-  [7, -3], [-7, 4], [3, 6], [-5, -6], [5, 2],
+  [4, 2], [-5, -3], [3, 5], [-4, -2], [6, 3],
+  [-3, -5], [5, -2], [-5, 4], [2, -4], [-2, 5],
+  [4, -5], [-3, 3], [5, 4], [-6, -3], [3, -4],
+  [-3, 5], [6, -4], [-4, -4], [3, 3], [-2, -3],
 ]
 
-function getConstellationPositions(n: number): { x: number; y: number }[] {
+function getPositions(n: number) {
   if (n === 0) return []
   if (n === 1) return [{ x: 35, y: 50 }]
   const COLS = n <= 3 ? n : n <= 6 ? 3 : n <= 12 ? 4 : 5
@@ -36,33 +35,20 @@ function getConstellationPositions(n: number): { x: number; y: number }[] {
     const col = i % COLS
     const goRight = row % 2 === 0
     const colsInRow = row === rows - 1 ? n - row * COLS : COLS
-    const normalizedCol = colsInRow <= 1 ? 0.5 :
+    const norm = colsInRow <= 1 ? 0.5 :
       goRight ? col / (colsInRow - 1) : (colsInRow - 1 - col) / (colsInRow - 1)
-    const x = 10 + normalizedCol * 80
+    const x = 10 + norm * 80
     const y = rows === 1 ? 50 : 12 + (row / (rows - 1)) * 76
     const [jx, jy] = JITTERS[i % JITTERS.length]
     return { x: Math.max(6, Math.min(94, x + jx)), y: Math.max(8, Math.min(92, y + jy)) }
   })
 }
 
-// SVG 4-point star shape
-function StarShape({ cx, cy, r, fill, opacity = 1, animate = false }: {
-  cx: number; cy: number; r: number; fill: string; opacity?: number; animate?: boolean
-}) {
-  const inner = r * 0.38
-  const d = `M${cx},${cy - r} L${cx + inner},${cy - inner} L${cx + r},${cy} L${cx + inner},${cy + inner} L${cx},${cy + r} L${cx - inner},${cy + inner} L${cx - r},${cy} L${cx - inner},${cy - inner} Z`
-  return (
-    <path d={d} fill={fill} opacity={opacity} style={animate ? { animation: 'twinkle 3s ease-in-out infinite' } : undefined} />
-  )
-}
-
-// Background decorative stars
-const BG_STARS = Array.from({ length: 100 }, (_, i) => ({
+// Decorative background stars
+const BG_STARS = Array.from({ length: 60 }, (_, i) => ({
   x: ((i * 137.508 + 13) % 100),
   y: ((i * 97.432 + 7) % 100),
-  r: i % 7 === 0 ? 0.8 : i % 4 === 0 ? 0.5 : 0.3,
-  o: 0.04 + (i % 8) * 0.015,
-  twinkle: i % 11 === 0,
+  r: i % 7 === 0 ? 0.7 : i % 3 === 0 ? 0.4 : 0.2,
 }))
 
 export default function TimelinePage() {
@@ -89,7 +75,7 @@ export default function TimelinePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const positions = getConstellationPositions(events.length)
+  const positions = getPositions(events.length)
   const active = events.find(e => e.id === activeId)
 
   return (
@@ -97,21 +83,17 @@ export default function TimelinePage() {
       <EdgeCurtain side="left" />
       <EdgeCurtain side="right" />
 
-      {/* Twinkle animation */}
+      {/* Sketchy animation (same as main page) */}
       <style>{`
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.04; }
-          50% { opacity: 0.15; }
-        }
-        @keyframes glow-pulse {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.8; }
+        @keyframes star-twinkle {
+          0%, 100% { opacity: 0.03; }
+          50% { opacity: 0.12; }
         }
       `}</style>
 
       {/* Header */}
       <div className={`fixed top-0 left-0 right-0 z-[10] flex items-center justify-between ${mounted ? 'animate-fade-slide-up' : 'opacity-0'}`}
-        style={{ padding: 'clamp(28px, 3vw, 44px) clamp(40px, 6vw, 80px) 0' }}>
+        style={{ padding: 'clamp(28px, 3vw, 44px) clamp(64px, 9vw, 100px) 0' }}>
         <button onClick={() => router.push('/')}
           className="label-caps text-white/40 hover:text-white/80 transition-colors"
           style={{ fontSize: '0.55rem', letterSpacing: '0.25em' }}>
@@ -125,6 +107,12 @@ export default function TimelinePage() {
           </span>
         </div>
       </div>
+
+      {/* Top sketchy line (like main page) */}
+      <div className="fixed pointer-events-none z-[3] sketch-jitter-line" style={{
+        top: 'clamp(28px, 3vw, 48px)', left: '7%', right: '7%', height: '1px',
+        background: 'rgba(255,255,255,0.1)', filter: 'url(#sketchy)',
+      }} />
 
       {loading ? (
         <div className="absolute inset-0 flex items-center justify-center">
@@ -140,63 +128,46 @@ export default function TimelinePage() {
         }}>
           {/* Constellation canvas */}
           <div className="relative flex-1 min-h-0" style={{ minHeight: '40vh' }}>
-            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-              {/* Glow filters */}
-              <defs>
-                <filter id="tl-glow" x="-100%" y="-100%" width="300%" height="300%">
-                  <feGaussianBlur stdDeviation="1.2" result="b" />
-                  <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
-                <filter id="tl-glow-strong" x="-200%" y="-200%" width="500%" height="500%">
-                  <feGaussianBlur stdDeviation="2.5" result="b" />
-                  <feMerge><feMergeNode in="b" /><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
-                <radialGradient id="tl-halo">
-                  <stop offset="0%" stopColor="white" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="white" stopOpacity="0" />
-                </radialGradient>
-              </defs>
-
-              {/* Background star field */}
+            <svg
+              className="absolute inset-0 w-full h-full sketch-jitter-line"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="xMidYMid meet"
+              style={{ filter: 'url(#sketchy)' }}
+            >
+              {/* Background star dots */}
               {BG_STARS.map((s, i) => (
-                <g key={`bg${i}`}>
-                  {s.r > 0.6 ? (
-                    <StarShape cx={s.x} cy={s.y} r={s.r} fill="white" opacity={s.o} animate={s.twinkle} />
-                  ) : (
-                    <circle cx={s.x} cy={s.y} r={s.r * 0.5} fill="white" opacity={s.o}
-                      style={s.twinkle ? { animation: `twinkle ${3 + (i % 4)}s ease-in-out ${(i % 7) * 0.5}s infinite` } : undefined} />
-                  )}
-                </g>
+                <circle key={`bg${i}`} cx={s.x} cy={s.y} r={s.r * 0.4}
+                  fill="white" opacity={0.04 + (i % 5) * 0.01}
+                  style={i % 9 === 0 ? { animation: `star-twinkle ${3 + i % 4}s ease-in-out ${(i % 7) * 0.4}s infinite` } : undefined}
+                />
               ))}
 
-              {/* Constellation lines */}
-              {events.map((ev, i) => {
+              {/* Constellation lines — ALL connected in order, hand-drawn style */}
+              {events.map((_, i) => {
                 if (i === 0) return null
                 const from = positions[i - 1]
                 const to = positions[i]
                 if (!from || !to) return null
-                const nearActive = ev.id === activeId || events[i - 1]?.id === activeId
-                const accent = nearActive ? getAccent(active || ev) : 'rgba(255,255,255,0.15)'
+                const nearActive = events[i].id === activeId || events[i - 1]?.id === activeId
                 return (
                   <line key={`ln-${i}`}
                     x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-                    stroke={accent} strokeWidth={nearActive ? '0.25' : '0.15'}
-                    strokeDasharray="0.6 1.0"
-                    opacity={nearActive ? 0.6 : 0.3}
-                    style={{ transition: 'all 0.4s' }}
+                    stroke={nearActive ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.12)'}
+                    strokeWidth="0.22"
+                    style={{ transition: 'stroke 0.4s' }}
                   />
                 )
               })}
 
-              {/* Stars */}
+              {/* Stars — hand-drawn X marks + circles */}
               {events.map((ev, i) => {
                 const pos = positions[i]
                 if (!pos) return null
                 const isActive = ev.id === activeId
                 const isHovered = ev.id === hoverId
                 const accent = getAccent(ev)
-                const baseR = ev.type === 'milestone' ? 2.8 : ev.type === 'turning' ? 2.4 : 1.8
-                const r = isActive ? baseR + 1.2 : isHovered ? baseR + 0.5 : baseR
+                const sz = ev.type === 'milestone' ? 2.5 : ev.type === 'turning' ? 2.2 : 1.8
+                const r = isActive ? sz + 1 : isHovered ? sz + 0.4 : sz
 
                 return (
                   <g key={ev.id} style={{ cursor: 'pointer' }}
@@ -204,38 +175,51 @@ export default function TimelinePage() {
                     onMouseEnter={() => setHoverId(ev.id)}
                     onMouseLeave={() => setHoverId(null)}
                   >
-                    {/* Halo glow for active */}
+                    {/* Outer ring — hand-drawn circle */}
                     {isActive && (
-                      <>
-                        <circle cx={pos.x} cy={pos.y} r={r * 3.5} fill="url(#tl-halo)"
-                          style={{ animation: 'glow-pulse 2.5s ease-in-out infinite' }} />
-                        <circle cx={pos.x} cy={pos.y} r={r + 2}
-                          fill="none" stroke={accent} strokeWidth="0.15" opacity="0.35" />
-                      </>
+                      <circle cx={pos.x} cy={pos.y} r={r + 2.5}
+                        fill="none" stroke={accent} strokeWidth="0.18" opacity="0.3" />
                     )}
 
-                    {/* Star body — 4-point star SVG */}
-                    <StarShape cx={pos.x} cy={pos.y} r={r}
-                      fill={isActive ? accent : isHovered ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)'}
-                    />
+                    {/* Star X mark — like hand-drawn tape marks on main page */}
+                    <line x1={pos.x - r} y1={pos.y - r * 0.6}
+                          x2={pos.x + r} y2={pos.y + r * 0.6}
+                          stroke={isActive ? accent : isHovered ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.5)'}
+                          strokeWidth={isActive ? '0.35' : '0.22'}
+                          strokeLinecap="round"
+                          style={{ transition: 'stroke 0.3s' }} />
+                    <line x1={pos.x + r} y1={pos.y - r * 0.6}
+                          x2={pos.x - r} y2={pos.y + r * 0.6}
+                          stroke={isActive ? accent : isHovered ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.5)'}
+                          strokeWidth={isActive ? '0.35' : '0.22'}
+                          strokeLinecap="round"
+                          style={{ transition: 'stroke 0.3s' }} />
 
-                    {/* Center bright dot */}
-                    <circle cx={pos.x} cy={pos.y} r={r * 0.25}
-                      fill="white" opacity={isActive ? 1 : 0.7}
-                      filter={isActive ? 'url(#tl-glow-strong)' : 'url(#tl-glow)'} />
+                    {/* Center dot */}
+                    <circle cx={pos.x} cy={pos.y}
+                      r={isActive ? 0.8 : 0.5}
+                      fill={isActive ? accent : 'rgba(255,255,255,0.6)'}
+                      style={{ transition: 'all 0.3s' }} />
 
-                    {/* Order number */}
-                    <text x={pos.x} y={pos.y - r - 2}
+                    {/* Glow halo for active */}
+                    {isActive && (
+                      <circle cx={pos.x} cy={pos.y} r={r * 2}
+                        fill="none" stroke={accent} strokeWidth="0.08" opacity="0.15"
+                        strokeDasharray="0.5 0.8" />
+                    )}
+
+                    {/* Number */}
+                    <text x={pos.x} y={pos.y - r - 1.8}
                       textAnchor="middle" fontSize="1.8"
-                      fill="rgba(255,255,255,0.25)"
+                      fill="rgba(255,255,255,0.22)"
                       fontFamily="'Pretendard Variable', sans-serif"
                     >{String(i + 1).padStart(2, '0')}</text>
 
-                    {/* Title label on hover / active */}
+                    {/* Title on hover/active */}
                     {(isActive || isHovered) && (
-                      <text x={pos.x} y={pos.y + r + 3.5}
-                        textAnchor="middle" fontSize="2.2"
-                        fill={isActive ? accent : 'rgba(255,255,255,0.7)'}
+                      <text x={pos.x} y={pos.y + r + 3.2}
+                        textAnchor="middle" fontSize="2"
+                        fill={isActive ? accent : 'rgba(255,255,255,0.6)'}
                         fontFamily="'Playfair Display', serif"
                         fontStyle="italic"
                       >{ev.title.length > 18 ? ev.title.slice(0, 17) + '…' : ev.title}</text>
@@ -246,67 +230,65 @@ export default function TimelinePage() {
             </svg>
           </div>
 
-          {/* Detail panel */}
+          {/* Detail panel — right side */}
           {active && (
             <div className="md:w-[300px] lg:w-[340px] flex flex-col overflow-hidden animate-fade-in" key={active.id}
               style={{
                 borderLeft: '1px solid rgba(255,255,255,0.06)',
                 padding: 'clamp(14px, 1.5vw, 28px) clamp(16px, 2vw, 28px)',
               }}>
-              <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
-                {/* Star icon */}
-                <div className="flex justify-center mb-3">
-                  <svg width="24" height="24" viewBox="0 0 24 24">
-                    <path d="M12,2 L13.8,9 L21,9.5 L15.5,14 L17.5,21 L12,17 L6.5,21 L8.5,14 L3,9.5 L10.2,9 Z"
-                      fill="none" stroke={getAccent(active)} strokeWidth="0.8" opacity="0.5" />
-                  </svg>
+              <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.08) transparent' }}>
+                {/* Decorative divider */}
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <span className="block h-px sketch-jitter-line" style={{
+                    width: '24px', background: `${getAccent(active)}50`, filter: 'url(#sketchy)',
+                  }} />
+                  <span style={{ color: getAccent(active), fontSize: '0.6rem', opacity: 0.6, fontFamily: "'Playfair Display', serif", fontStyle: 'italic' }}>※</span>
+                  <span className="block h-px sketch-jitter-line" style={{
+                    width: '24px', background: `${getAccent(active)}50`, filter: 'url(#sketchy)',
+                  }} />
                 </div>
 
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <span className="sketch-jitter-line" style={{
-                    display: 'block', height: '1px', width: '24px',
-                    background: `${getAccent(active)}50`, filter: 'url(#sketchy)',
-                  }} />
+                {/* Date + type */}
+                <div className="text-center mb-3">
                   <span className="label-caps" style={{
                     fontSize: '0.42rem', letterSpacing: '0.25em',
                     color: getAccent(active), opacity: 0.9,
                   }}>{active.storyDate}</span>
                   {active.type && (
-                    <>
-                      <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
-                      <span className="label-caps" style={{
-                        fontSize: '0.38rem', letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)',
-                      }}>{TYPE_LABELS[active.type] || active.type}</span>
-                    </>
+                    <span className="label-caps ml-2" style={{
+                      fontSize: '0.38rem', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.25)',
+                    }}>· {TYPE_LABELS[active.type] || active.type}</span>
                   )}
-                  <span className="sketch-jitter-line" style={{
-                    display: 'block', height: '1px', width: '24px',
-                    background: `${getAccent(active)}50`, filter: 'url(#sketchy)',
-                  }} />
                 </div>
 
+                {/* Title */}
                 <h2 className="heading-display text-center mb-2" style={{
                   fontSize: 'clamp(1.2rem, 2.2vw, 1.7rem)',
                   color: 'rgba(255,255,255,0.92)', lineHeight: 1.1,
                 }}>{active.title}</h2>
 
+                {/* Character */}
                 {active.character && (
                   <div className="text-center mb-4">
                     <span className="label-caps" style={{
                       fontSize: '0.4rem', letterSpacing: '0.2em',
-                      color: getAccent(active), opacity: 0.55,
+                      color: getAccent(active), opacity: 0.5,
+                      borderBottom: `1px solid ${getAccent(active)}30`, paddingBottom: '2px',
                     }}>
                       {active.character === 'both' ? 'Manon × Dylan' : active.character === 'manon' ? 'Manon' : 'Dylan'}
                     </span>
                   </div>
                 )}
 
+                {/* Sketchy divider */}
                 <div className="sketch-jitter-line mb-4" style={{
                   height: '1px', background: 'rgba(255,255,255,0.06)', filter: 'url(#sketchy)',
                 }} />
 
+                {/* Description */}
                 <p className="text-editorial whitespace-pre-wrap" style={{
-                  color: 'rgba(255,255,255,0.62)',
+                  color: 'rgba(255,255,255,0.6)',
                   fontSize: 'clamp(0.76rem, 0.95vw, 0.88rem)',
                   lineHeight: 1.85,
                 }}>
@@ -314,23 +296,23 @@ export default function TimelinePage() {
                 </p>
               </div>
 
-              {/* Navigation */}
+              {/* Nav */}
               <div className="flex items-center justify-between mt-3 pt-2" style={{
                 borderTop: '1px solid rgba(255,255,255,0.05)',
               }}>
                 <button
                   onClick={() => { const idx = events.findIndex(e => e.id === activeId); if (idx > 0) setActiveId(events[idx - 1].id) }}
                   disabled={events.findIndex(e => e.id === activeId) === 0}
-                  className="label-caps disabled:opacity-15 transition-opacity hover:text-white/80"
+                  className="label-caps disabled:opacity-15 hover:text-white/80"
                   style={{ fontSize: '0.48rem', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.4)' }}
                 >← PREV</button>
-                <span className="label-caps text-white/20" style={{ fontSize: '0.4rem', letterSpacing: '0.18em' }}>
+                <span className="label-caps text-white/20" style={{ fontSize: '0.4rem' }}>
                   {String(events.findIndex(e => e.id === activeId) + 1).padStart(2, '0')} / {String(events.length).padStart(2, '0')}
                 </span>
                 <button
                   onClick={() => { const idx = events.findIndex(e => e.id === activeId); if (idx < events.length - 1) setActiveId(events[idx + 1].id) }}
                   disabled={events.findIndex(e => e.id === activeId) === events.length - 1}
-                  className="label-caps disabled:opacity-15 transition-opacity hover:text-white/80"
+                  className="label-caps disabled:opacity-15 hover:text-white/80"
                   style={{ fontSize: '0.48rem', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.4)' }}
                 >NEXT →</button>
               </div>
@@ -345,10 +327,7 @@ export default function TimelinePage() {
 function EmptyState() {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
-      <svg width="40" height="40" viewBox="0 0 40 40">
-        <path d="M20,4 L23,15 L34,15.5 L25.5,22 L28.5,33 L20,27 L11.5,33 L14.5,22 L6,15.5 L17,15 Z"
-          fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="0.8" />
-      </svg>
+      <span className="block h-px w-16 sketch-jitter-line" style={{ background: 'rgba(255,255,255,0.15)', filter: 'url(#sketchy)' }} />
       <div className="text-center">
         <p className="heading-display text-white/40" style={{ fontSize: 'clamp(1.5rem, 2.5vw, 2rem)', fontStyle: 'italic' }}>
           No events yet.
@@ -357,6 +336,7 @@ function EmptyState() {
           Add timeline events from the admin panel.
         </p>
       </div>
+      <span className="block h-px w-16 sketch-jitter-line" style={{ background: 'rgba(255,255,255,0.15)', filter: 'url(#sketchy)' }} />
     </div>
   )
 }

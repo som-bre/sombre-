@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+
+const ChatPopupDynamic = dynamic(() => import('@/components/ChatPopup'), { ssr: false })
 
 const PROPS = [
   { label: 'Prologue', sub: 'Only poison grows from the seed of poison', href: '/', vx: 24, vy: 50, rot: -3, sz: 0.92 },
@@ -14,6 +17,12 @@ const PROPS = [
 const EXTRAS = [
   { label: 'Foreword', by: 'Manon', href: '/foreword', vx: 14, vy: 82, rot: -1.5 },
   { label: 'Rebuttal', by: 'Dylan', href: '/rebuttal', vx: 80, vy: 78, rot: 1 },
+]
+
+const ADMIN_PROPS = [
+  { label: 'Admin', sub: 'Stage Door', href: '/admin', vx: 20, vy: 90, rot: -2, sz: 0.85 },
+  { label: 'Sheets', sub: 'Documents & Links', href: '/sheets', vx: 50, vy: 88, rot: 0.5, sz: 0.85 },
+  { label: 'Logout', sub: '', href: '__logout__', vx: 80, vy: 90, rot: 1.5, sz: 0.8 },
 ]
 
 function SvgDefs({ turbRef }: { turbRef: React.MutableRefObject<SVGFETurbulenceElement | null> }) {
@@ -225,6 +234,10 @@ function StageDrawing() {
         <circle key={`em${i}`} cx={e.vx} cy={e.vy} r={0.6}
                 stroke="rgba(255,255,255,0.04)" strokeWidth="0.08" fill="none" />
       ))}
+      {ADMIN_PROPS.map((p, i) => (
+        <circle key={`ap${i}`} cx={p.vx} cy={p.vy} r={0.5}
+                stroke="rgba(255,255,255,0.03)" strokeWidth="0.06" fill="none" />
+      ))}
 
       {/* ── Magic wand (lying on floor, slightly angled) ── */}
       <g transform="translate(82, 52) rotate(-25)" opacity="0.2">
@@ -274,10 +287,11 @@ function StageDrawing() {
 }
 
 // ── Stage text content (still) ──
-function StageContent({ color, dim, router, hovered, onHover, onArchive, isOverlay, isAdmin }: {
+function StageContent({ color, dim, router, hovered, onHover, onArchive, isOverlay, isAdmin, loggedUser }: {
   color: string; dim: string; router: any
   hovered: number | null; onHover: (i: number | null) => void
   onArchive: () => void; isOverlay?: boolean; isAdmin?: boolean
+  loggedUser?: string | null
 }) {
   const El = isOverlay ? 'div' : 'button'
 
@@ -367,49 +381,95 @@ function StageContent({ color, dim, router, hovered, onHover, onArchive, isOverl
         </El>
       ))}
 
-      {/* ── Admin (stage door) ── */}
-      <El
-        {...(!isOverlay && { onClick: onArchive })}
-        className={isOverlay ? '' : 'cursor-pointer group'}
-        style={{
-          position: 'absolute',
-          left: '50%', bottom: '5%',
-          transform: 'translateX(-50%)',
-          background: 'none', border: 'none',
-          textAlign: 'center' as const,
-          display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: '4px',
-        }}
-      >
-        {/* Key icon */}
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ opacity: 0.4 }}>
-          <circle cx="5" cy="5" r="3.5" stroke={color} strokeWidth="0.9" />
-          <line x1="7.5" y1="7.5" x2="12" y2="12" stroke={color} strokeWidth="0.9" strokeLinecap="round" />
-          <line x1="10" y1="11" x2="10" y2="13" stroke={color} strokeWidth="0.9" strokeLinecap="round" />
-          <line x1="11.5" y1="11.5" x2="12.5" y2="11.5" stroke={color} strokeWidth="0.9" strokeLinecap="round" />
-        </svg>
-        <span style={{
-          color, opacity: 0.45,
-          fontSize: 'clamp(0.5rem, 0.65vw, 0.6rem)',
-          fontFamily: "'Pretendard Variable', sans-serif",
-          letterSpacing: '0.22em', textTransform: 'uppercase' as const,
-          transition: 'opacity 0.3s',
-        }}>Admin</span>
-      </El>
+      {/* ── Admin props (visible when logged in) ── */}
+      {isAdmin ? (
+        <>
+          {ADMIN_PROPS.map((prop, i) => (
+            <El
+              key={prop.href}
+              {...(!isOverlay && {
+                onClick: () => prop.href === '__logout__' ? onArchive() : router.push(prop.href),
+                onMouseEnter: () => onHover(100 + i),
+                onMouseLeave: () => onHover(null),
+              })}
+              className={isOverlay ? '' : 'cursor-pointer'}
+              style={{
+                position: 'absolute',
+                left: `${prop.vx}%`, top: `${prop.vy}%`,
+                transform: `translate(-50%, -50%) rotate(${prop.rot}deg)`,
+                background: 'none', border: 'none',
+                textAlign: 'center' as const,
+                color: dim,
+                fontFamily: "'Playfair Display', serif", fontWeight: 400,
+                fontSize: `calc(clamp(0.85rem, 1.5vw, 1.15rem) * ${prop.sz})`,
+                letterSpacing: hovered === 100 + i ? '0.2em' : '0.06em',
+                transition: 'letter-spacing 0.4s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.3s',
+                fontStyle: hovered === 100 + i ? 'italic' as const : 'normal' as const,
+                opacity: hovered !== null && hovered !== 100 + i ? 0.2 : 0.65,
+              }}
+            >
+              {prop.label}
+              {prop.sub && (
+                <span style={{
+                  display: 'block',
+                  fontSize: 'clamp(0.42rem, 0.6vw, 0.52rem)',
+                  fontStyle: 'italic', letterSpacing: '0.02em',
+                  opacity: hovered === 100 + i ? 0.45 : 0,
+                  maxHeight: hovered === 100 + i ? '18px' : '0px',
+                  overflow: 'hidden',
+                  transition: 'opacity 0.35s, max-height 0.35s',
+                  marginTop: hovered === 100 + i ? '3px' : '0px',
+                }}>{prop.sub}</span>
+              )}
+            </El>
+          ))}
+          {/* Logged-in indicator */}
+          <div className="absolute" style={{
+            left: '50%', bottom: '2%', transform: 'translateX(-50%)',
+            textAlign: 'center',
+          }}>
+            <span style={{
+              color: loggedUser === 'manon' ? '#D9809A' : '#C8C8C8',
+              fontSize: 'clamp(0.42rem, 0.5vw, 0.48rem)',
+              fontFamily: "'Pretendard Variable', sans-serif",
+              letterSpacing: '0.2em', opacity: 0.5,
+              textTransform: 'uppercase' as const,
+            }}>logged in as {loggedUser}</span>
+          </div>
+        </>
+      ) : (
+        <El
+          {...(!isOverlay && { onClick: onArchive })}
+          className={isOverlay ? '' : 'cursor-pointer group'}
+          style={{
+            position: 'absolute',
+            left: '50%', bottom: '5%',
+            transform: 'translateX(-50%)',
+            background: 'none', border: 'none',
+            textAlign: 'center' as const,
+            display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: '4px',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ opacity: 0.4 }}>
+            <circle cx="5" cy="5" r="3.5" stroke={color} strokeWidth="0.9" />
+            <line x1="7.5" y1="7.5" x2="12" y2="12" stroke={color} strokeWidth="0.9" strokeLinecap="round" />
+            <line x1="10" y1="11" x2="10" y2="13" stroke={color} strokeWidth="0.9" strokeLinecap="round" />
+            <line x1="11.5" y1="11.5" x2="12.5" y2="11.5" stroke={color} strokeWidth="0.9" strokeLinecap="round" />
+          </svg>
+          <span style={{
+            color, opacity: 0.45,
+            fontSize: 'clamp(0.5rem, 0.65vw, 0.6rem)',
+            fontFamily: "'Pretendard Variable', sans-serif",
+            letterSpacing: '0.22em', textTransform: 'uppercase' as const,
+            transition: 'opacity 0.3s',
+          }}>Login</span>
+        </El>
+      )}
 
       {/* ── Bottom links ── */}
       <div className="absolute flex items-center gap-4" style={{
         right: 'clamp(20px, 3vw, 40px)', bottom: '3%',
       }}>
-        {isAdmin && (
-          <El {...(!isOverlay && { onClick: () => router.push('/sheets') })}
-            className={isOverlay ? '' : 'cursor-pointer'}
-            style={{
-              background: 'none', border: 'none', color: dim, opacity: 0.35,
-              fontSize: 'clamp(0.44rem, 0.55vw, 0.5rem)',
-              fontFamily: "'Pretendard Variable', sans-serif",
-              letterSpacing: '0.15em', textTransform: 'uppercase' as const,
-            }}>Sheets</El>
-        )}
         <El {...(!isOverlay && { onClick: () => window.open('https://x.com/4rgonautika', '_blank') })}
           className={isOverlay ? '' : 'cursor-pointer'}
           style={{
@@ -448,7 +508,9 @@ export default function Home() {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
   const [showLogin, setShowLogin] = useState(false)
   const [password, setPassword] = useState('')
+  const [username, setUsername] = useState<'manon' | 'dylan'>('manon')
   const [isAdmin, setIsAdmin] = useState(false)
+  const [loggedUser, setLoggedUser] = useState<string | null>(null)
   const [srcX, setSrcX] = useState(400)
   const [viewH, setViewH] = useState(800)
   const turbRef = useRef<SVGFETurbulenceElement>(null)
@@ -459,6 +521,7 @@ export default function Home() {
     const t1 = setTimeout(() => setCurtainOpen(true), 1800)
     const t2 = setTimeout(() => setStageVisible(true), 3000)
     setIsAdmin(localStorage?.getItem('same_admin_login') === 'true')
+    setLoggedUser(localStorage?.getItem('same_logged_user') || null)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
 
@@ -495,17 +558,32 @@ export default function Home() {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       })
       if (res.ok) {
         localStorage?.setItem('same_admin_login', 'true')
-        router.push('/admin')
+        localStorage?.setItem('same_logged_user', username)
+        localStorage?.setItem('sombre_chat_as', username)
+        setIsAdmin(true)
+        setLoggedUser(username)
+        setShowLogin(false)
+        setPassword('')
       } else {
         alert('비밀번호가 일치하지 않습니다.')
       }
     } catch {
       alert('인증 처리 중 오류가 발생했습니다.')
     }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth', { method: 'DELETE' })
+    } catch {}
+    localStorage?.removeItem('same_admin_login')
+    localStorage?.removeItem('same_logged_user')
+    setIsAdmin(false)
+    setLoggedUser(null)
   }
 
   // Perspective ellipse: shape changes based on mouse position
@@ -538,7 +616,8 @@ export default function Home() {
       <div className="absolute inset-0 transition-opacity duration-[1.5s]" style={{ opacity: stageVisible ? 1 : 0 }}>
         <StageContent color="rgba(235,235,235,0.88)" dim="rgba(235,235,235,0.3)"
           router={router} hovered={hoveredIdx} onHover={setHoveredIdx}
-          onArchive={() => setShowLogin(true)} isAdmin={isAdmin} />
+          onArchive={isAdmin ? handleLogout : () => setShowLogin(true)} isAdmin={isAdmin}
+          loggedUser={loggedUser} />
       </div>
 
       {/* ── Spotlight ── */}
@@ -579,7 +658,7 @@ export default function Home() {
           style={{ WebkitMaskImage: mask, maskImage: mask }}>
           <StageContent color="#FF6B9D" dim="rgba(255,107,157,0.5)"
             router={router} hovered={hoveredIdx} onHover={() => {}}
-            onArchive={() => {}} isOverlay isAdmin={isAdmin} />
+            onArchive={() => {}} isOverlay isAdmin={isAdmin} loggedUser={loggedUser} />
         </div>
       )}
 
@@ -595,7 +674,25 @@ export default function Home() {
               color: 'rgba(255,255,255,0.3)', fontSize: '0.6rem',
               letterSpacing: '0.3em', textTransform: 'uppercase',
               fontFamily: "'Pretendard Variable', sans-serif",
-            }}>Archive</h3>
+            }}>Login</h3>
+            {/* Username selector */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              {(['manon', 'dylan'] as const).map(u => (
+                <button key={u} onClick={() => setUsername(u)}
+                  style={{
+                    flex: 1, padding: '10px 0', cursor: 'pointer',
+                    background: username === u ? (u === 'manon' ? 'rgba(217,128,154,0.15)' : 'rgba(200,200,200,0.1)') : 'transparent',
+                    border: `1px solid ${username === u ? (u === 'manon' ? '#D9809A' : '#C8C8C8') + '60' : 'rgba(255,255,255,0.08)'}`,
+                    color: username === u ? (u === 'manon' ? '#D9809A' : '#C8C8C8') : 'rgba(255,255,255,0.3)',
+                    fontSize: '0.75rem', fontFamily: "'Playfair Display', serif",
+                    fontStyle: 'italic', letterSpacing: '0.08em',
+                    transition: 'all 0.3s',
+                    textTransform: 'capitalize',
+                  }}>
+                  {u}
+                </button>
+              ))}
+            </div>
             <input type="password" placeholder="Password" value={password}
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleLogin(e as any) }}
@@ -618,6 +715,9 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Chat popup — visible when logged in */}
+      {isAdmin && <ChatPopupDynamic />}
     </div>
   )
 }

@@ -259,21 +259,13 @@ function AccessDenied({ onBack }: { onBack: () => void }) {
           Admin only
         </h2>
         <p className="heading-condensed text-white/40 mb-8" style={{ fontStyle: 'italic', fontSize: '0.9rem' }}>
-          이 페이지는 어드민 로그인 후에만 볼 수 있습니다.
+          메인 페이지에서 로그인해주세요.
         </p>
-        <div className="flex items-center justify-center gap-6">
-          <button onClick={() => window.location.href = '/admin'}
-            className="label-caps text-[#D9809A] hover:opacity-80 transition-opacity"
-            style={{ fontSize: '0.55rem', letterSpacing: '0.25em' }}>
-            ADMIN LOGIN →
-          </button>
-          <span className="text-white/15">·</span>
-          <button onClick={onBack}
-            className="label-caps text-white/40 hover:text-white/70 transition-colors"
-            style={{ fontSize: '0.55rem', letterSpacing: '0.25em' }}>
-            ← BACK
-          </button>
-        </div>
+        <button onClick={onBack}
+          className="label-caps text-white/40 hover:text-white/70 transition-colors"
+          style={{ fontSize: '0.55rem', letterSpacing: '0.25em' }}>
+          ← BACK TO STAGE
+        </button>
       </div>
     </div>
   )

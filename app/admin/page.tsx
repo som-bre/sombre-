@@ -594,6 +594,7 @@ function ColorPicker({ color, onChange }: { color: string, onChange: (c: string)
 export default function AdminPage() {
   // 공통 상태
   const [password, setPassword] = useState('')
+  const [adminUser, setAdminUser] = useState('manon')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'roleplay' | 'trpg' | 'character' | 'game' | 'au' | 'sheets' | 'timeline' | 'chat'>('roleplay')
@@ -1313,7 +1314,15 @@ export default function AdminPage() {
       <div className="min-h-screen bg-bg flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-bg-cream border border-ink/10 rounded-lg p-8">
           <h1 className="font-display text-center text-[#8B1538] mb-6">ADMIN ACCESS</h1>
-          <form onSubmit={async (e) => { e.preventDefault(); try { const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); if (res.ok) { setIsLoggedIn(true); localStorage.setItem('same_admin_login', 'true') } else alert('비밀번호 불일치') } catch { alert('인증 오류') } }}>
+          <form onSubmit={async (e) => { e.preventDefault(); try { const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: adminUser, password }) }); if (res.ok) { setIsLoggedIn(true); localStorage.setItem('same_admin_login', 'true'); localStorage.setItem('same_logged_user', adminUser); localStorage.setItem('sombre_chat_as', adminUser) } else alert('비밀번호 불일치') } catch { alert('인증 오류') } }}>
+            <div className="flex gap-2 mb-4">
+              {['manon', 'dylan'].map(u => (
+                <button key={u} type="button" onClick={() => setAdminUser(u)}
+                  className={`flex-1 py-2 rounded border text-sm capitalize transition-all ${adminUser === u ? 'border-[#8B1538] bg-[#8B1538]/10 text-[#8B1538]' : 'border-ink/10 text-ink/40'}`}>
+                  {u}
+                </button>
+              ))}
+            </div>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               className="w-full bg-white/60 border border-ink/10 rounded px-4 py-3 text-ink focus:outline-none focus:border-[#8B1538] mb-4 placeholder-ink/40" placeholder="비밀번호" />
             <button type="submit" className="w-full bg-[#8B1538] hover:bg-[#A01840] text-white py-3 rounded">로그인</button>
