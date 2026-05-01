@@ -596,7 +596,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'roleplay' | 'trpg' | 'character' | 'game' | 'au' | 'sheets'>('roleplay')
+  const [activeTab, setActiveTab] = useState<'roleplay' | 'trpg' | 'character' | 'game' | 'au' | 'sheets' | 'timeline' | 'chat'>('roleplay')
   const [message, setMessage] = useState('')
   
   // 역극 상태
@@ -623,6 +623,13 @@ export default function AdminPage() {
   // 시트 리스트 상태
   const [sheetsList, setSheetsList] = useState<any[]>([])
 
+  // 타임라인 상태
+  const [timelineEvents, setTimelineEvents] = useState<any[]>([])
+  const [timelineSelectedIdx, setTimelineSelectedIdx] = useState(0)
+
+  // 채팅 상태
+  const [chatMessages, setChatMessages] = useState<any[]>([])
+
   // 게임 대사 상태
   const [gameData, setGameData] = useState<GameDialogueData>({ foreword: { parts: [] }, rebuttal: { parts: [] } })
   const [gameTab, setGameTab] = useState<'foreword' | 'rebuttal'>('foreword')
@@ -647,6 +654,8 @@ export default function AdminPage() {
       fetchGameData()
       fetchAUs()
       fetchSheets()
+      fetchTimeline()
+      fetchChat()
     }
   }, [isLoggedIn])
 
@@ -672,6 +681,70 @@ export default function AdminPage() {
       const data = await res.json()
       if (Array.isArray(data?.aus)) setAUList(data.aus)
     } catch (e) { console.error(e) }
+  }
+
+  const fetchTimeline = async () => {
+    try {
+      const res = await fetch('/api/timeline')
+      const data = await res.json()
+      if (Array.isArray(data?.events)) setTimelineEvents(data.events.sort((a: any, b: any) => a.order - b.order))
+    } catch (e) { console.error(e) }
+  }
+
+  const saveTimeline = async (next: any[]) => {
+    setTimelineEvents(next)
+    try {
+      const res = await fetch('/api/timeline', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: next }),
+      })
+      if (res.ok) { setMessage('타임라인 저장됨'); setTimeout(() => setMessage(''), 2000) }
+      else { setMessage('저장 실패'); setTimeout(() => setMessage(''), 2500) }
+    } catch { setMessage('저장 실패'); setTimeout(() => setMessage(''), 2500) }
+  }
+
+  const handleAddTimelineEvent = () => {
+    const newEvent = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      storyDate: '새 날짜',
+      title: '새 이벤트',
+      description: '',
+      character: 'both',
+      type: 'event',
+      order: timelineEvents.length,
+    }
+    const next = [...timelineEvents, newEvent]
+    setTimelineSelectedIdx(next.length - 1)
+    saveTimeline(next)
+  }
+
+  const handleDeleteTimelineEvent = (idx: number) => {
+    const next = timelineEvents.filter((_, i) => i !== idx).map((ev, i) => ({ ...ev, order: i }))
+    setTimelineSelectedIdx(Math.max(0, idx - 1))
+    saveTimeline(next)
+  }
+
+  const updateTimelineEvent = (idx: number, patch: any) => {
+    const next = timelineEvents.map((ev, i) => i === idx ? { ...ev, ...patch } : ev)
+    setTimelineEvents(next)
+  }
+
+  const fetchChat = async () => {
+    try {
+      const res = await fetch('/api/chat')
+      const data = await res.json()
+      if (Array.isArray(data?.messages)) setChatMessages(data.messages)
+    } catch (e) { console.error(e) }
+  }
+
+  const clearChat = async () => {
+    if (!confirm('채팅 내역을 모두 삭제할까요?')) return
+    try {
+      await fetch('/api/chat', { method: 'DELETE' })
+      setChatMessages([])
+      setMessage('채팅 삭제됨'); setTimeout(() => setMessage(''), 2000)
+    } catch { setMessage('삭제 실패'); setTimeout(() => setMessage(''), 2500) }
   }
 
   const saveAUs = async (next: any[]) => {
@@ -1272,7 +1345,7 @@ export default function AdminPage() {
               캐릭터
             </button>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mt-2">
             <button onClick={() => setActiveTab('game')}
               className={`flex-1 py-2 rounded text-sm ${activeTab === 'game' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
               게임 대사
@@ -1284,6 +1357,16 @@ export default function AdminPage() {
             <button onClick={() => setActiveTab('sheets')}
               className={`flex-1 py-2 rounded text-sm ${activeTab === 'sheets' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
               시트
+            </button>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <button onClick={() => setActiveTab('timeline')}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'timeline' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              타임라인
+            </button>
+            <button onClick={() => { setActiveTab('chat'); fetchChat() }}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'chat' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              채팅
             </button>
           </div>
           
@@ -1436,6 +1519,47 @@ export default function AdminPage() {
               <p className="text-xs text-ink/25">
                 현재 {sheetsList.length}개 시트
               </p>
+            </div>
+          ) : activeTab === 'timeline' ? (
+            <div className="space-y-2">
+              <button onClick={handleAddTimelineEvent}
+                className="w-full bg-[#8B1538]/10 hover:bg-[#8B1538]/20 text-[#8B1538] py-2.5 rounded text-sm border border-[#8B1538]/30">
+                + 새 이벤트 추가
+              </button>
+              <p className="text-xs text-ink/25 pt-1">시간순 스토리 이벤트를 관리합니다.</p>
+              <div className="space-y-1">
+                {timelineEvents.map((ev, idx) => (
+                  <div key={ev.id} className="flex items-center gap-1 group">
+                    <button onClick={() => setTimelineSelectedIdx(idx)}
+                      className={`flex-1 text-left px-3 py-2 rounded text-sm transition-colors ${
+                        timelineSelectedIdx === idx
+                          ? 'bg-[#8B1538]/15 text-[#8B1538] border border-[#8B1538]/40'
+                          : 'text-ink/60 hover:bg-ink/[0.04]'
+                      }`}>
+                      <span className="text-[10px] text-ink/30 block">{ev.storyDate}</span>
+                      <span className="block truncate">{ev.title || '(제목 없음)'}</span>
+                    </button>
+                    <button onClick={() => handleDeleteTimelineEvent(idx)}
+                      className="opacity-0 group-hover:opacity-100 text-ink/30 hover:text-red-500 px-2 text-xs"
+                      title="삭제">×</button>
+                  </div>
+                ))}
+                {timelineEvents.length === 0 && (
+                  <p className="text-center text-ink/20 text-xs py-4 italic">이벤트가 없습니다.</p>
+                )}
+              </div>
+            </div>
+          ) : activeTab === 'chat' ? (
+            <div className="space-y-3 p-2">
+              <p className="text-xs text-ink/40">{chatMessages.length}개의 메시지</p>
+              <button onClick={clearChat}
+                className="w-full bg-red-50 hover:bg-red-100 text-red-500 py-2 rounded text-xs border border-red-200">
+                채팅 전체 삭제
+              </button>
+              <button onClick={fetchChat}
+                className="w-full bg-ink/[0.03] hover:bg-ink/[0.06] text-ink/60 py-2 rounded text-xs">
+                새로고침
+              </button>
             </div>
           ) : null}
         </div>
@@ -2380,6 +2504,126 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </>
+        ) : activeTab === 'timeline' ? (
+          timelineEvents.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-ink/30 flex-col gap-3">
+              <p className="text-lg italic">이벤트가 없습니다</p>
+              <p className="text-sm">왼쪽에서 "+ 새 이벤트 추가"를 눌러주세요.</p>
+            </div>
+          ) : (
+            <>
+              <div className="h-16 border-b border-ink/10 flex items-center justify-between px-6 bg-bg-cream">
+                <span className="font-bold text-ink/70">
+                  {timelineEvents[timelineSelectedIdx]?.title || '이벤트 편집'}
+                </span>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-[#8B1538]">{message}</span>
+                  <button onClick={() => saveTimeline(timelineEvents)}
+                    className="bg-[#8B1538] hover:bg-[#A01840] text-white px-6 py-2 rounded font-bold text-sm">
+                    저장하기
+                  </button>
+                </div>
+              </div>
+              {timelineEvents[timelineSelectedIdx] && (
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 max-w-2xl">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-ink/40 block mb-1">날짜/시기</label>
+                      <input
+                        value={timelineEvents[timelineSelectedIdx].storyDate || ''}
+                        onChange={e => updateTimelineEvent(timelineSelectedIdx, { storyDate: e.target.value })}
+                        placeholder="e.g. Year 1, Spring"
+                        className="w-full border border-ink/15 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#8B1538]/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-ink/40 block mb-1">유형</label>
+                      <select
+                        value={timelineEvents[timelineSelectedIdx].type || 'event'}
+                        onChange={e => updateTimelineEvent(timelineSelectedIdx, { type: e.target.value })}
+                        className="w-full border border-ink/15 rounded px-3 py-2 text-sm bg-white focus:outline-none">
+                        <option value="event">Event</option>
+                        <option value="milestone">Milestone</option>
+                        <option value="memory">Memory</option>
+                        <option value="turning">Turning Point</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-ink/40 block mb-1">제목</label>
+                    <input
+                      value={timelineEvents[timelineSelectedIdx].title || ''}
+                      onChange={e => updateTimelineEvent(timelineSelectedIdx, { title: e.target.value })}
+                      placeholder="이벤트 제목"
+                      className="w-full border border-ink/15 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#8B1538]/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-ink/40 block mb-1">관련 캐릭터</label>
+                    <select
+                      value={timelineEvents[timelineSelectedIdx].character || 'both'}
+                      onChange={e => updateTimelineEvent(timelineSelectedIdx, { character: e.target.value })}
+                      className="w-full border border-ink/15 rounded px-3 py-2 text-sm bg-white focus:outline-none">
+                      <option value="both">Manon × Dylan</option>
+                      <option value="manon">Manon</option>
+                      <option value="dylan">Dylan</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-ink/40 block mb-1">내용</label>
+                    <textarea
+                      value={timelineEvents[timelineSelectedIdx].description || ''}
+                      onChange={e => updateTimelineEvent(timelineSelectedIdx, { description: e.target.value })}
+                      placeholder="이벤트 상세 내용..."
+                      rows={8}
+                      className="w-full border border-ink/15 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#8B1538]/50 resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-ink/40 block mb-1">순서 (숫자가 작을수록 먼저)</label>
+                    <input
+                      type="number"
+                      value={timelineEvents[timelineSelectedIdx].order ?? timelineSelectedIdx}
+                      onChange={e => updateTimelineEvent(timelineSelectedIdx, { order: Number(e.target.value) })}
+                      className="w-32 border border-ink/15 rounded px-3 py-2 text-sm bg-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          )
+        ) : activeTab === 'chat' ? (
+          <>
+            <div className="h-16 border-b border-ink/10 flex items-center justify-between px-6 bg-bg-cream">
+              <span className="font-bold text-ink/70">채팅 내역</span>
+              <span className="text-sm text-[#8B1538]">{message}</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {chatMessages.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-ink/30">
+                  <p className="italic">채팅 내역이 없습니다.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-w-xl">
+                  {chatMessages.map(msg => (
+                    <div key={msg.id} className={`flex flex-col ${msg.sender === 'manon' ? 'items-start' : 'items-end'}`}>
+                      <div className="flex items-baseline gap-2 mb-0.5">
+                        <span className="text-xs font-medium italic" style={{ color: msg.sender === 'manon' ? '#D9809A' : '#888' }}>
+                          {msg.sender === 'manon' ? 'Manon' : 'Dylan'}
+                        </span>
+                        <span className="text-[10px] text-ink/30">
+                          {new Date(msg.timestamp).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="max-w-[80%] px-3 py-2 rounded text-sm text-ink/80 bg-white border border-ink/10">
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         ) : null}

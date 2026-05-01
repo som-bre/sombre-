@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Sidebar from '@/components/Sidebar'
 import CustomCursor from '@/components/CustomCursor'
 import SketchyFilter from '@/components/SketchyFilter'
+import ChatPopup from '@/components/ChatPopup'
 
 export const metadata: Metadata = {
   title: 'SOMBRE',
@@ -20,6 +21,7 @@ export default function RootLayout({
         <SketchyFilter />
         <CustomCursor />
         <Sidebar />
+        <ChatPopup />
         <main className="pt-[44px] min-h-screen">
           {children}
         </main>

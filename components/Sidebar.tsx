@@ -8,6 +8,7 @@ const navItems = [
   { href: '/character', label: '캐릭터', en: 'Characters' },
   { href: '/record', label: '기록', en: 'Records' },
   { href: '/timeline', label: '연대기', en: 'Timeline' },
+  { href: '/au', label: '세계관', en: 'Universes' },
 ]
 
 export default function Sidebar() {

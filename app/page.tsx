@@ -8,6 +8,7 @@ const PROPS = [
   { label: 'Characters', sub: 'Manon × Dylan', href: '/character', vx: 68, vy: 47, rot: 2, sz: 0.88 },
   { label: 'Records', sub: 'Roleplay Session Archive', href: '/record', vx: 35, vy: 65, rot: -1.5, sz: 1.0 },
   { label: 'Timeline', sub: 'The Wheel of Karma', href: '/timeline', vx: 66, vy: 70, rot: 2.5, sz: 1.05 },
+  { label: 'Universes', sub: 'Alternate Worlds', href: '/au', vx: 50, vy: 56, rot: 0.5, sz: 0.94 },
 ]
 
 const EXTRAS = [
@@ -366,24 +367,45 @@ function StageContent({ color, dim, router, hovered, onHover, onArchive, isOverl
         </El>
       ))}
 
-      {/* ── Archive / Twitter ── */}
-      <div className="absolute flex items-center justify-center"
-        style={{ bottom: '3%', left: 0, right: 0, gap: 'clamp(20px, 3vw, 36px)' }}>
-        <El {...(!isOverlay && { onClick: onArchive })}
-          className={isOverlay ? '' : 'cursor-pointer'}
-          style={{ background: 'none', border: 'none', color: dim, opacity: 0.3,
-            fontSize: 'clamp(0.48rem, 0.6vw, 0.55rem)',
-            fontFamily: "'Pretendard Variable', sans-serif",
-            letterSpacing: '0.15em', textTransform: 'uppercase' as const,
-          }}>Archive</El>
-        <El {...(!isOverlay && { onClick: () => window.open('https://x.com/4rgonautika', '_blank') })}
-          className={isOverlay ? '' : 'cursor-pointer'}
-          style={{ background: 'none', border: 'none', color: dim, opacity: 0.3,
-            fontSize: 'clamp(0.48rem, 0.6vw, 0.55rem)',
-            fontFamily: "'Pretendard Variable', sans-serif",
-            letterSpacing: '0.15em', textTransform: 'uppercase' as const,
-          }}>Twitter</El>
-      </div>
+      {/* ── Admin (stage door) ── */}
+      <El
+        {...(!isOverlay && { onClick: onArchive })}
+        className={isOverlay ? '' : 'cursor-pointer group'}
+        style={{
+          position: 'absolute',
+          left: '50%', bottom: '5%',
+          transform: 'translateX(-50%)',
+          background: 'none', border: 'none',
+          textAlign: 'center' as const,
+          display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: '4px',
+        }}
+      >
+        {/* Key icon */}
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ opacity: 0.4 }}>
+          <circle cx="5" cy="5" r="3.5" stroke={color} strokeWidth="0.9" />
+          <line x1="7.5" y1="7.5" x2="12" y2="12" stroke={color} strokeWidth="0.9" strokeLinecap="round" />
+          <line x1="10" y1="11" x2="10" y2="13" stroke={color} strokeWidth="0.9" strokeLinecap="round" />
+          <line x1="11.5" y1="11.5" x2="12.5" y2="11.5" stroke={color} strokeWidth="0.9" strokeLinecap="round" />
+        </svg>
+        <span style={{
+          color, opacity: 0.45,
+          fontSize: 'clamp(0.5rem, 0.65vw, 0.6rem)',
+          fontFamily: "'Pretendard Variable', sans-serif",
+          letterSpacing: '0.22em', textTransform: 'uppercase' as const,
+          transition: 'opacity 0.3s',
+        }}>Admin</span>
+      </El>
+
+      {/* ── Twitter ── */}
+      <El {...(!isOverlay && { onClick: () => window.open('https://x.com/4rgonautika', '_blank') })}
+        className={isOverlay ? '' : 'cursor-pointer'}
+        style={{
+          position: 'absolute', right: 'clamp(20px, 3vw, 40px)', bottom: '3%',
+          background: 'none', border: 'none', color: dim, opacity: 0.25,
+          fontSize: 'clamp(0.44rem, 0.55vw, 0.5rem)',
+          fontFamily: "'Pretendard Variable', sans-serif",
+          letterSpacing: '0.15em', textTransform: 'uppercase' as const,
+        }}>Twitter</El>
 
       {/* ── Quote ── */}
       <div className="absolute" style={{
