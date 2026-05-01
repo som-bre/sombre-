@@ -2595,39 +2595,176 @@ export default function AdminPage() {
             </>
           )
         ) : activeTab === 'chat' ? (
-          <>
-            <div className="h-16 border-b border-ink/10 flex items-center justify-between px-6 bg-bg-cream">
-              <span className="font-bold text-ink/70">채팅 내역</span>
-              <span className="text-sm text-[#8B1538]">{message}</span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              {chatMessages.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-ink/30">
-                  <p className="italic">채팅 내역이 없습니다.</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-w-xl">
-                  {chatMessages.map(msg => (
-                    <div key={msg.id} className={`flex flex-col ${msg.sender === 'manon' ? 'items-start' : 'items-end'}`}>
-                      <div className="flex items-baseline gap-2 mb-0.5">
-                        <span className="text-xs font-medium italic" style={{ color: msg.sender === 'manon' ? '#D9809A' : '#888' }}>
-                          {msg.sender === 'manon' ? 'Manon' : 'Dylan'}
-                        </span>
-                        <span className="text-[10px] text-ink/30">
-                          {new Date(msg.timestamp).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <div className="max-w-[80%] px-3 py-2 rounded text-sm text-ink/80 bg-white border border-ink/10">
-                        {msg.content}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
+          <ChatAdminPanel
+            messages={chatMessages}
+            message={message}
+            onRefresh={fetchChat}
+            onUpdate={(msgs) => setChatMessages(msgs)}
+            onMessageChange={(id, patch) => {
+              const next = chatMessages.map(m => m.id === id ? { ...m, ...patch } : m)
+              setChatMessages(next)
+            }}
+          />
         ) : null}
       </div>
     </div>
+  )
+}
+
+function ChatAdminPanel({ messages, message, onRefresh, onUpdate, onMessageChange }: {
+  messages: any[]
+  message: string
+  onRefresh: () => void
+  onUpdate: (msgs: any[]) => void
+  onMessageChange: (id: string, patch: any) => void
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [editSender, setEditSender] = useState<'manon' | 'dylan'>('manon')
+  const [saving, setSaving] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 60)
+  }, [messages.length])
+
+  const startEdit = (msg: any) => {
+    setEditingId(msg.id)
+    setEditContent(msg.content || '')
+    setEditSender(msg.sender)
+  }
+
+  const cancelEdit = () => { setEditingId(null) }
+
+  const saveEdit = async (id: string) => {
+    setSaving(true)
+    try {
+      await fetch('/api/chat', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, content: editContent, sender: editSender }),
+      })
+      onMessageChange(id, { content: editContent, sender: editSender })
+      setEditingId(null)
+    } catch {}
+    setSaving(false)
+  }
+
+  const deleteMsg = async (id: string) => {
+    if (!confirm('이 메시지를 삭제할까요?')) return
+    try {
+      await fetch(`/api/chat?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      onUpdate(messages.filter(m => m.id !== id))
+    } catch {}
+  }
+
+  return (
+    <>
+      <div className="h-16 border-b border-ink/10 flex items-center justify-between px-6 bg-bg-cream">
+        <div className="flex items-baseline gap-3">
+          <span className="font-bold text-ink/70">채팅 내역</span>
+          <span className="text-xs text-ink/35">{messages.length}개 메시지</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-[#8B1538]">{message}</span>
+          <button onClick={onRefresh}
+            className="text-xs text-ink/50 hover:text-ink/80 border border-ink/15 px-3 py-1.5 rounded">
+            새로고침
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto p-6">
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-ink/30">
+            <p className="italic">채팅 내역이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-w-2xl">
+            {messages.map(msg => {
+              const isManon = msg.sender === 'manon'
+              const color = isManon ? '#D9809A' : '#888'
+              const isEditing = editingId === msg.id
+
+              return (
+                <div key={msg.id}
+                  className={`group relative flex flex-col ${isManon ? 'items-start' : 'items-end'}`}>
+                  {/* Action buttons */}
+                  <div className={`absolute top-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 ${isManon ? 'right-0' : 'left-0'}`}>
+                    <button onClick={() => startEdit(msg)}
+                      className="text-[10px] px-1.5 py-0.5 bg-white border border-ink/15 text-ink/50 hover:text-ink/80 rounded">
+                      ✏ 편집
+                    </button>
+                    <button onClick={() => deleteMsg(msg.id)}
+                      className="text-[10px] px-1.5 py-0.5 bg-white border border-red-200 text-red-400 hover:text-red-600 rounded">
+                      × 삭제
+                    </button>
+                  </div>
+
+                  <div className="flex items-baseline gap-2 mb-0.5">
+                    <span className="text-xs font-medium italic" style={{ color }}>
+                      {isManon ? 'Manon' : 'Dylan'}
+                    </span>
+                    <span className="text-[10px] text-ink/30">
+                      {new Date(msg.timestamp).toLocaleString('ko-KR', {
+                        month: 'short', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+
+                  {isEditing ? (
+                    <div className="w-full max-w-md space-y-2 p-3 bg-white border border-[#8B1538]/30 rounded">
+                      <div className="flex gap-2 mb-2">
+                        {(['manon', 'dylan'] as const).map(s => (
+                          <button key={s}
+                            onClick={() => setEditSender(s)}
+                            className={`flex-1 py-1 rounded text-xs font-medium italic ${
+                              editSender === s
+                                ? s === 'manon' ? 'bg-[#D9809A]/20 text-[#D9809A] border border-[#D9809A]/40' : 'bg-gray-100 text-gray-600 border border-gray-300'
+                                : 'bg-ink/[0.03] text-ink/30'
+                            }`}>
+                            {s === 'manon' ? 'Manon' : 'Dylan'}
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={editContent}
+                        onChange={e => setEditContent(e.target.value)}
+                        rows={3}
+                        className="w-full border border-ink/15 rounded px-2 py-1.5 text-sm text-ink/80 resize-none focus:outline-none focus:border-[#8B1538]/40"
+                        autoFocus
+                      />
+                      {msg.imageUrl && (
+                        <img src={msg.imageUrl} alt="" className="max-h-24 object-cover rounded" />
+                      )}
+                      <div className="flex gap-2">
+                        <button onClick={() => saveEdit(msg.id)} disabled={saving}
+                          className="flex-1 py-1.5 bg-[#8B1538] hover:bg-[#A01840] text-white text-xs rounded">
+                          {saving ? '저장 중…' : '저장'}
+                        </button>
+                        <button onClick={cancelEdit}
+                          className="flex-1 py-1.5 bg-ink/[0.04] text-ink/50 text-xs rounded border border-ink/10">
+                          취소
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="max-w-[75%] overflow-hidden rounded border border-ink/10 bg-white">
+                      {msg.imageUrl && (
+                        <img src={msg.imageUrl} alt="" className="max-h-32 object-cover w-full" />
+                      )}
+                      {msg.content && (
+                        <p className="px-3 py-2 text-sm text-ink/80">{msg.content}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            <div ref={bottomRef} />
+          </div>
+        )}
+      </div>
+    </>
   )
 }

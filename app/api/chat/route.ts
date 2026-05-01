@@ -10,6 +10,7 @@ export interface ChatMessage {
   id: string
   sender: 'manon' | 'dylan'
   content: string
+  imageUrl?: string
   timestamp: number
 }
 
@@ -30,8 +31,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { sender, content } = await request.json()
-    if (!sender || !content?.trim()) {
+    const { sender, content, imageUrl } = await request.json()
+    if (!sender || (!content?.trim() && !imageUrl)) {
       return NextResponse.json({ error: '잘못된 요청' }, { status: 400 })
     }
 
@@ -39,7 +40,8 @@ export async function POST(request: NextRequest) {
     const newMessage: ChatMessage = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
       sender,
-      content: content.trim(),
+      content: content?.trim() || '',
+      ...(imageUrl ? { imageUrl } : {}),
       timestamp: Date.now(),
     }
 
@@ -51,9 +53,38 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE() {
+export async function PATCH(request: NextRequest) {
   try {
-    await kv.set(CHAT_KEY, defaultData)
+    const { id, content, sender, imageUrl } = await request.json()
+    if (!id) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 })
+
+    const existing: ChatData = (await kv.get(CHAT_KEY)) || defaultData
+    const messages = existing.messages.map(msg => {
+      if (msg.id !== id) return msg
+      return {
+        ...msg,
+        ...(content !== undefined ? { content } : {}),
+        ...(sender !== undefined ? { sender } : {}),
+        ...(imageUrl !== undefined ? { imageUrl } : {}),
+      }
+    })
+    await kv.set(CHAT_KEY, { messages })
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: '수정 실패' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const id = request.nextUrl.searchParams.get('id')
+    if (id) {
+      const existing: ChatData = (await kv.get(CHAT_KEY)) || defaultData
+      const messages = existing.messages.filter(msg => msg.id !== id)
+      await kv.set(CHAT_KEY, { messages })
+    } else {
+      await kv.set(CHAT_KEY, defaultData)
+    }
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: '삭제 실패' }, { status: 500 })
