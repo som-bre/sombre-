@@ -27,28 +27,32 @@ export interface CharacterPhaseData {
 }
 
 export interface CharacterData {
-  media: CharacterPhaseData[]
-  sadham: CharacterPhaseData[]
-  mediaAvatars?: string[]   // 메디아 채팅 아바타 후보
-  sadhamAvatars?: string[]  // 사드함 채팅 아바타 후보
+  manon: CharacterPhaseData[]
+  dylan: CharacterPhaseData[]
+  manonAvatars?: string[]
+  dylanAvatars?: string[]
 }
 
 // 기존 Record 형식 → 배열로 마이그레이션
 function migrateData(data: any): CharacterData {
-  if (!data) return { media: [], sadham: [] }
+  if (!data) return { manon: [], dylan: [] }
 
   const migrateCharacter = (charData: any): CharacterPhaseData[] => {
     if (Array.isArray(charData)) return charData
-    // Record<string, PhaseData> → PhaseData[]
     return Object.entries(charData).map(([key, value]: [string, any]) => ({
       id: key,
       ...value,
     }))
   }
 
+  const manon = data.manon || data.media
+  const dylan = data.dylan || data.sadham
+
   return {
-    media: data.media ? migrateCharacter(data.media) : [],
-    sadham: data.sadham ? migrateCharacter(data.sadham) : [],
+    manon: manon ? migrateCharacter(manon) : [],
+    dylan: dylan ? migrateCharacter(dylan) : [],
+    manonAvatars: data.manonAvatars || data.mediaAvatars,
+    dylanAvatars: data.dylanAvatars || data.sadhamAvatars,
   }
 }
 
@@ -60,7 +64,7 @@ export async function GET() {
     return NextResponse.json(data)
   } catch (error) {
     console.error('Failed to fetch character data:', error)
-    return NextResponse.json({ media: [], sadham: [] }, { status: 200 })
+    return NextResponse.json({ manon: [], dylan: [] }, { status: 200 })
   }
 }
 

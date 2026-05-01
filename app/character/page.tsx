@@ -100,11 +100,8 @@ export default function CharacterPage() {
     fetch('/api/characters')
       .then(res => res.json())
       .then(data => {
-        // Backwards compat: API may return media/sadham
-        const m = data?.manon?.length ? data.manon : data?.media
-        const d = data?.dylan?.length ? data.dylan : data?.sadham
-        if (m?.length) setManonPhases(m)
-        if (d?.length) setDylanPhases(d)
+        if (data?.manon?.length) setManonPhases(data.manon)
+        if (data?.dylan?.length) setDylanPhases(data.dylan)
       })
       .catch(() => {})
   }, [])

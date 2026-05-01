@@ -121,7 +121,7 @@ async function uploadAudio(file: File): Promise<string> {
 
 // 기본 캐릭터 데이터 — 비어있는 첫 페이즈 (admin에서 채움)
 const defaultCharacterData: CharacterData = {
-  media: [
+  manon: [
     {
       id: 'manon-0', symbol: '❀', label: 'VARIATION · I', name: '[ Première ]', quote: '""',
       nameKr: 'Manon', nameEn: 'MANON',
@@ -130,7 +130,7 @@ const defaultCharacterData: CharacterData = {
       abilityName: '', abilityDesc: '', mainQuote: '""',
     },
   ],
-  sadham: [
+  dylan: [
     {
       id: 'dylan-0', symbol: '✦', label: 'INCANTATION · I', name: '[ Cantus ]', quote: '""',
       nameKr: 'Dylan', nameEn: 'DYLAN',
@@ -612,7 +612,7 @@ export default function AdminPage() {
 
   // 캐릭터 상태
   const [characterData, setCharacterData] = useState<CharacterData>(defaultCharacterData)
-  const [charTab, setCharTab] = useState<'media' | 'sadham'>('media')
+  const [charTab, setCharTab] = useState<'manon' | 'dylan'>('manon')
   const [charPhaseIdx, setCharPhaseIdx] = useState(0)
   const [charUploading, setCharUploading] = useState(false)
 
@@ -858,14 +858,14 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/characters')
       const data = await res.json()
-      if (data?.media?.length && data?.sadham?.length) {
+      if (data?.manon?.length || data?.dylan?.length) {
         setCharacterData(data)
       }
     } catch (e) { console.error(e) }
   }
 
   const getCurrentCharPhase = (): CharacterPhaseData => {
-    const phases = charTab === 'media' ? characterData.media : characterData.sadham
+    const phases = characterData[charTab]
     return phases[charPhaseIdx] || phases[0]
   }
 
@@ -883,13 +883,13 @@ export default function AdminPage() {
     const phases = characterData[charTab]
     const newPhase: CharacterPhaseData = {
       id: generateId(),
-      symbol: charTab === 'media' ? '❀' : '✦',
-      label: charTab === 'media'
+      symbol: charTab === 'manon' ? '❀' : '✦',
+      label: charTab === 'manon'
         ? `VARIATION · ${toRoman(phases.length + 1)}`
         : `INCANTATION · ${toRoman(phases.length + 1)}`,
       name: '[ 새 페이즈 ]', quote: '""',
-      nameKr: charTab === 'media' ? 'Manon' : 'Dylan',
-      nameEn: charTab === 'media' ? 'MANON' : 'DYLAN',
+      nameKr: charTab === 'manon' ? 'Manon' : 'Dylan',
+      nameEn: charTab === 'manon' ? 'MANON' : 'DYLAN',
       age: '', height: '', weight: '',
       personality: [],
       abilityName: '', abilityDesc: '', mainQuote: '',
@@ -1400,12 +1400,12 @@ export default function AdminPage() {
           ) : activeTab === 'character' ? (
             <div className="space-y-3">
               <div className="flex gap-1">
-                <button onClick={() => { setCharTab('media'); setCharPhaseIdx(0) }}
-                  className={`flex-1 py-2 rounded text-xs font-bold italic ${charTab === 'media' ? 'bg-[#D9809A]/20 text-[#D9809A] border border-[#D9809A]/50' : 'bg-ink/[0.03] text-ink/40'}`}>
+                <button onClick={() => { setCharTab('manon'); setCharPhaseIdx(0) }}
+                  className={`flex-1 py-2 rounded text-xs font-bold italic ${charTab === 'manon' ? 'bg-[#D9809A]/20 text-[#D9809A] border border-[#D9809A]/50' : 'bg-ink/[0.03] text-ink/40'}`}>
                   Manon
                 </button>
-                <button onClick={() => { setCharTab('sadham'); setCharPhaseIdx(0) }}
-                  className={`flex-1 py-2 rounded text-xs font-bold italic ${charTab === 'sadham' ? 'bg-[#888]/30 text-ink/70 border border-ink/30' : 'bg-ink/[0.03] text-ink/40'}`}>
+                <button onClick={() => { setCharTab('dylan'); setCharPhaseIdx(0) }}
+                  className={`flex-1 py-2 rounded text-xs font-bold italic ${charTab === 'dylan' ? 'bg-[#888]/30 text-ink/70 border border-ink/30' : 'bg-ink/[0.03] text-ink/40'}`}>
                   Dylan
                 </button>
               </div>
@@ -1415,7 +1415,7 @@ export default function AdminPage() {
                     <button onClick={() => setCharPhaseIdx(idx)}
                       className={`flex-1 text-left px-3 py-2.5 rounded text-sm transition-colors ${
                         charPhaseIdx === idx
-                          ? charTab === 'media'
+                          ? charTab === 'manon'
                             ? 'bg-[#8B1538]/20 text-[#8B1538] border border-[#8B1538]/40'
                             : 'bg-[#5E7B97]/20 text-[#5E7B97] border border-[#5E7B97]/40'
                           : 'text-ink/50 hover:bg-ink/[0.04] border border-transparent'
@@ -1689,7 +1689,7 @@ export default function AdminPage() {
                       {(() => {
                         const sec = editingRecord.phases[selectedPhaseIdx]?.sections[selectedSectionIdx]
                         if (!sec) return null
-                        const updateSectionAvatar = (field: 'mediaAvatar' | 'sadhamAvatar', value: string | undefined) => {
+                        const updateSectionAvatar = (field: 'manonAvatar' | 'dylanAvatar', value: string | undefined) => {
                           const r = {...editingRecord}
                           r.phases[selectedPhaseIdx].sections[selectedSectionIdx] = { ...sec, [field]: value }
                           setEditingRecord(r)
@@ -1698,33 +1698,33 @@ export default function AdminPage() {
                           <div className="flex items-center gap-6">
                             <div className="flex items-center gap-2">
                               <span className="text-xs italic" style={{ color: '#D9809A' }}>Manon:</span>
-                              <button onClick={() => updateSectionAvatar('mediaAvatar', undefined)}
-                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-[9px] italic ${!sec.mediaAvatar ? 'border-[#D9809A] bg-ink/5 text-ink/40' : 'border-transparent bg-ink/[0.03] text-ink/20 hover:bg-ink/[0.06]'}`}>
+                              <button onClick={() => updateSectionAvatar('manonAvatar', undefined)}
+                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-[9px] italic ${!sec.manonAvatar ? 'border-[#D9809A] bg-ink/5 text-ink/40' : 'border-transparent bg-ink/[0.03] text-ink/20 hover:bg-ink/[0.06]'}`}>
                                 M
                               </button>
-                              {(characterData.mediaAvatars || []).map((url, i) => (
-                                <button key={i} onClick={() => updateSectionAvatar('mediaAvatar', url)}
-                                  className={`w-8 h-8 rounded-full border-2 overflow-hidden ${sec.mediaAvatar === url ? 'border-[#D9809A]' : 'border-transparent opacity-50 hover:opacity-100'}`}>
+                              {(characterData.manonAvatars || []).map((url, i) => (
+                                <button key={i} onClick={() => updateSectionAvatar('manonAvatar', url)}
+                                  className={`w-8 h-8 rounded-full border-2 overflow-hidden ${sec.manonAvatar === url ? 'border-[#D9809A]' : 'border-transparent opacity-50 hover:opacity-100'}`}>
                                   <img src={url} alt="" className="w-full h-full object-cover" />
                                 </button>
                               ))}
-                              {(characterData.mediaAvatars || []).length === 0 && (
+                              {(characterData.manonAvatars || []).length === 0 && (
                                 <span className="text-[10px] text-ink/20">캐릭터 탭에서 후보 등록</span>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs italic text-ink/60">Dylan:</span>
-                              <button onClick={() => updateSectionAvatar('sadhamAvatar', undefined)}
-                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-[9px] italic ${!sec.sadhamAvatar ? 'border-ink/40 bg-ink/5 text-ink/40' : 'border-transparent bg-ink/[0.03] text-ink/20 hover:bg-ink/[0.06]'}`}>
+                              <button onClick={() => updateSectionAvatar('dylanAvatar', undefined)}
+                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-[9px] italic ${!sec.dylanAvatar ? 'border-ink/40 bg-ink/5 text-ink/40' : 'border-transparent bg-ink/[0.03] text-ink/20 hover:bg-ink/[0.06]'}`}>
                                 D
                               </button>
-                              {(characterData.sadhamAvatars || []).map((url, i) => (
-                                <button key={i} onClick={() => updateSectionAvatar('sadhamAvatar', url)}
-                                  className={`w-8 h-8 rounded-full border-2 overflow-hidden ${sec.sadhamAvatar === url ? 'border-ink/50' : 'border-transparent opacity-50 hover:opacity-100'}`}>
+                              {(characterData.dylanAvatars || []).map((url, i) => (
+                                <button key={i} onClick={() => updateSectionAvatar('dylanAvatar', url)}
+                                  className={`w-8 h-8 rounded-full border-2 overflow-hidden ${sec.dylanAvatar === url ? 'border-ink/50' : 'border-transparent opacity-50 hover:opacity-100'}`}>
                                   <img src={url} alt="" className="w-full h-full object-cover" />
                                 </button>
                               ))}
-                              {(characterData.sadhamAvatars || []).length === 0 && (
+                              {(characterData.dylanAvatars || []).length === 0 && (
                                 <span className="text-[10px] text-ink/20">캐릭터 탭에서 후보 등록</span>
                               )}
                             </div>
@@ -1934,7 +1934,7 @@ export default function AdminPage() {
                     {getCurrentCharPhase().voiceFile ? (
                       <div className="p-4 bg-ink/[0.03] border border-ink/10 rounded-lg space-y-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${charTab === 'media' ? 'bg-[#8B1538]/30 text-[#8B1538]' : 'bg-[#5E7B97]/30 text-[#5E7B97]'}`}>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${charTab === 'manon' ? 'bg-[#8B1538]/30 text-[#8B1538]' : 'bg-[#5E7B97]/30 text-[#5E7B97]'}`}>
                             ♪
                           </div>
                           <div className="flex-1 min-w-0">
@@ -1967,11 +1967,11 @@ export default function AdminPage() {
                   </h3>
                   <p className="text-xs text-ink/30 mb-3">역극 기록마다 선택할 수 있는 아바타 후보를 등록하세요.</p>
                   <div className="flex flex-wrap gap-3 mb-3">
-                    {(characterData[charTab === 'media' ? 'mediaAvatars' : 'sadhamAvatars'] || []).map((url, idx) => (
+                    {(characterData[charTab === 'manon' ? 'manonAvatars' : 'dylanAvatars'] || []).map((url, idx) => (
                       <div key={idx} className="relative group">
                         <img src={url} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-ink/10" />
                         <button onClick={() => {
-                          const key = charTab === 'media' ? 'mediaAvatars' : 'sadhamAvatars'
+                          const key = charTab === 'manon' ? 'manonAvatars' : 'dylanAvatars'
                           const arr = [...(characterData[key] || [])]
                           arr.splice(idx, 1)
                           setCharacterData(prev => ({ ...prev, [key]: arr }))
@@ -1986,7 +1986,7 @@ export default function AdminPage() {
                         setCharUploading(true)
                         try {
                           const path = await uploadImage(file)
-                          const key = charTab === 'media' ? 'mediaAvatars' : 'sadhamAvatars'
+                          const key = charTab === 'manon' ? 'manonAvatars' : 'dylanAvatars'
                           setCharacterData(prev => ({ ...prev, [key]: [...(prev[key] || []), path] }))
                         } catch (err: any) { alert(`업로드 실패: ${err.message}`) }
                         setCharUploading(false)

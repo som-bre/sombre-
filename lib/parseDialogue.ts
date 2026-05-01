@@ -10,8 +10,8 @@ export interface Section {
   id: string
   title: string
   lines: DialogueLine[]
-  mediaAvatar?: string    // 이 섹션에서 메디아의 아바타 이미지
-  sadhamAvatar?: string   // 이 섹션에서 사드함의 아바타 이미지
+  manonAvatar?: string
+  dylanAvatar?: string
 }
 
 export interface Phase {

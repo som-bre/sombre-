@@ -56,13 +56,13 @@ function ImageGalleryModal({
 // ═══════════════════════════════════════
 // 역극 대화 말풍선
 // ═══════════════════════════════════════
-function DialogueBubble({ line, mediaAvatar, sadhamAvatar, onImageClick }: { line: DialogueLine; mediaAvatar?: string; sadhamAvatar?: string; onImageClick?: (imageIndex: number) => void }) {
+function DialogueBubble({ line, manonAvatar, dylanAvatar, onImageClick }: { line: DialogueLine; manonAvatar?: string; dylanAvatar?: string; onImageClick?: (imageIndex: number) => void }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const isDylan = line.speaker.includes('사드함') || line.speaker.includes('Dylan') || line.speaker.includes('딜런')
   const isManon = line.speaker.includes('메디아') || line.speaker.includes('Manon') || line.speaker.includes('마농')
   const isRight = isDylan
   const images = line.images || []
-  const avatar = isDylan ? sadhamAvatar : isManon ? mediaAvatar : undefined
+  const avatar = isDylan ? dylanAvatar : isManon ? manonAvatar : undefined
   const dylanColor = '#C8C8C8'   // grayscale
   const manonColor = '#D9809A'   // ballet pink
 
@@ -702,7 +702,7 @@ export default function RecordPage() {
                 ) : (
                   <div className="space-y-0.5 max-w-2xl mx-auto">
                     {selectedSection.lines.map((line, index) => (
-                      <DialogueBubble key={line.id} line={line} mediaAvatar={selectedSection?.mediaAvatar} sadhamAvatar={selectedSection?.sadhamAvatar} onImageClick={(imageIndex) => handleImageClick(selectedSection.lines, index, imageIndex)} />
+                      <DialogueBubble key={line.id} line={line} manonAvatar={selectedSection?.manonAvatar} dylanAvatar={selectedSection?.dylanAvatar} onImageClick={(imageIndex) => handleImageClick(selectedSection.lines, index, imageIndex)} />
                     ))}
                     {/* 막 내림 표시 */}
                     <div className="flex items-center justify-center gap-3 py-10 opacity-40">
