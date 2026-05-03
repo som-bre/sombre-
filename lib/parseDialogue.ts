@@ -40,6 +40,8 @@ export interface TRPGLine {
     target: number
     rolled: number
     result: 'critical' | 'extreme' | 'hard' | 'success' | 'fail' | 'fumble'
+    rolledAll?: number[]
+    bonusResults?: { bonus: number; result: 'critical' | 'extreme' | 'hard' | 'success' | 'fail' | 'fumble' }[]
   }
   diceData?: {
     formula: string

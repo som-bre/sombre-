@@ -20,11 +20,21 @@ export default function ChatPopup() {
   const [sending, setSending] = useState(false)
   const [hasNew, setHasNew] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const lastIdRef = useRef<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Track login state
+  useEffect(() => {
+    const check = () => setIsLoggedIn(localStorage.getItem('same_admin_login') === 'true')
+    check()
+    window.addEventListener('storage', check)
+    const interval = setInterval(check, 1000)
+    return () => { window.removeEventListener('storage', check); clearInterval(interval) }
+  }, [])
 
   // Restore character from localStorage
   useEffect(() => {
@@ -111,6 +121,8 @@ export default function ChatPopup() {
   const isMyMessage = (msg: ChatMessage) => msg.sender === chatAs
   const myColor = chatAs ? SENDER_COLORS[chatAs] : MANON_COLOR
   const otherColor = chatAs === 'manon' ? DYLAN_COLOR : MANON_COLOR
+
+  if (!isLoggedIn) return null
 
   return (
     <>

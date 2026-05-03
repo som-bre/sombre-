@@ -156,9 +156,10 @@ function TRPGBubble({ line, characters, onImageClick }: { line: TRPGLine; charac
 
   // ── CoC 판정 주사위 ──
   if (line.type === 'roll' && line.rollData) {
-    const { skillName, target, rolled, result } = line.rollData
+    const { skillName, target, rolled, result, rolledAll, bonusResults } = line.rollData
     const resultColors: Record<string, string> = { critical: 'bg-yellow-500', extreme: 'bg-green-500', hard: 'bg-green-400', success: 'bg-blue-400', fail: 'bg-red-500', fumble: 'bg-red-700' }
     const resultTexts: Record<string, string> = { critical: '대성공', extreme: '극단적 성공', hard: '어려운 성공', success: '성공', fail: '실패', fumble: '대실패' }
+    const sortedBonus = bonusResults ? [...bonusResults].sort((a, b) => b.bonus - a.bonus) : null
     return (
       <div className="my-2 flex justify-center">
         <div className="bg-white/[0.04] border border-white/10 rounded-lg p-2.5 min-w-[180px]">
@@ -166,9 +167,24 @@ function TRPGBubble({ line, characters, onImageClick }: { line: TRPGLine; charac
           <div className="text-center text-white/85 font-medium text-sm mb-1.5">{skillName}</div>
           <div className="flex items-center justify-center gap-4 text-xs">
             <span className="text-white/45">목표: {target}</span>
-            <span className="text-white/85 font-bold">{rolled}</span>
+            {rolledAll && rolledAll.length > 1 ? (
+              <span className="text-white/85 font-bold">{rolledAll.join(', ')}</span>
+            ) : (
+              <span className="text-white/85 font-bold">{rolled}</span>
+            )}
           </div>
-          <div className={`mt-1.5 text-center text-white text-[10px] py-0.5 px-2 rounded ${resultColors[result]}`}>{resultTexts[result]}</div>
+          {sortedBonus ? (
+            <div className="mt-2 space-y-0.5">
+              {sortedBonus.map(({ bonus, result: r }) => (
+                <div key={bonus} className="flex items-center gap-2 text-[10px]">
+                  <span className="text-white/40 w-7 text-right tabular-nums">{bonus > 0 ? `+${bonus}` : bonus}:</span>
+                  <span className={`flex-1 text-center text-white py-0.5 px-2 rounded ${resultColors[r]}`}>{resultTexts[r]}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={`mt-1.5 text-center text-white text-[10px] py-0.5 px-2 rounded ${resultColors[result]}`}>{resultTexts[result]}</div>
+          )}
         </div>
       </div>
     )

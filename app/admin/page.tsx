@@ -327,31 +327,62 @@ function parseRoll20HTML(html: string): { lines: TRPGLine[], characters: TRPGCha
         return
       }
 
-      // ── CoC 판정 주사위 체크 ──
-      const rollTemplate = textEl.querySelector('.sheet-rolltemplate-coc-1')
+      // ── CoC 판정 주사위 체크 (일반 + 보너스/페널티 다이스) ──
+      const rollTemplate = textEl.querySelector('.sheet-rolltemplate-coc-1') || textEl.querySelector('.sheet-rolltemplate-coc')
       if (rollTemplate) {
         const caption = rollTemplate.querySelector('caption')?.textContent || ''
-        const targetEl = rollTemplate.querySelectorAll('.sheet-template_value span')[0]
-        const rolledEl = rollTemplate.querySelectorAll('.sheet-template_value span')[3]
-        const resultCell = rollTemplate.querySelector('tr:last-child td:last-child')
+        const valueSpans = rollTemplate.querySelectorAll('.sheet-template_value span')
+        const target = parseInt(valueSpans[0]?.textContent || '0')
 
-        const target = parseInt(targetEl?.textContent || '0')
-        const rolled = parseInt(rolledEl?.textContent || '0')
+        const parseResult = (text: string): 'critical' | 'extreme' | 'hard' | 'success' | 'fail' | 'fumble' => {
+          const t = text.toLowerCase()
+          if (t.includes('대성공') || t.includes('critical')) return 'critical'
+          if (t.includes('극단적') || t.includes('extreme')) return 'extreme'
+          if (t.includes('어려운') || t.includes('hard')) return 'hard'
+          if (t.includes('성공') || t.includes('success')) return 'success'
+          if (t.includes('대실패') || t.includes('fumble')) return 'fumble'
+          return 'fail'
+        }
 
-        let result: 'critical' | 'extreme' | 'hard' | 'success' | 'fail' | 'fumble' = 'fail'
-        const resultText = resultCell?.textContent?.toLowerCase() || ''
-        if (resultText.includes('대성공') || resultText.includes('critical')) result = 'critical'
-        else if (resultText.includes('극단적') || resultText.includes('extreme')) result = 'extreme'
-        else if (resultText.includes('어려운') || resultText.includes('hard')) result = 'hard'
-        else if (resultText.includes('성공') || resultText.includes('success')) result = 'success'
-        else if (resultText.includes('대실패') || resultText.includes('fumble')) result = 'fumble'
+        const rows = Array.from(rollTemplate.querySelectorAll('tr'))
+        const bonusRows: { row: Element; bonus: number }[] = []
+        rows.forEach(row => {
+          const label = row.querySelector('.sheet-template_label')?.textContent?.trim().replace(/\s+/g, '') || ''
+          const m = label.match(/^([+-]?\d+):$/)
+          if (m) bonusRows.push({ row, bonus: parseInt(m[1]) })
+        })
+
+        type RollResult = 'critical' | 'extreme' | 'hard' | 'success' | 'fail' | 'fumble'
+        let rolled = 0
+        let result: RollResult = 'fail'
+        let rolledAll: number[] | undefined
+        let bonusResults: { bonus: number; result: RollResult }[] | undefined
+
+        if (bonusRows.length > 0) {
+          // 보너스/페널티 다이스 — 굴림 행에 여러 d100, 각 보너스 행이 결과
+          const rolledRow = rows.find(row => row.querySelector('.sheet-template_label')?.getAttribute('data-i18n') === 'rolled')
+          const rolledSpans = rolledRow?.querySelectorAll('.sheet-template_value span')
+          rolledAll = Array.from(rolledSpans || []).map(s => parseInt(s.textContent || '0'))
+          rolled = rolledAll[0] || 0
+          bonusResults = bonusRows.map(({ row, bonus }) => {
+            const cell = row.querySelector('.sheet-template_value')
+            const resText = cell?.getAttribute('data-i18n') || cell?.textContent || ''
+            return { bonus, result: parseResult(resText) }
+          })
+          const zero = bonusResults.find(b => b.bonus === 0)
+          result = zero?.result || bonusResults[0]?.result || 'fail'
+        } else {
+          rolled = parseInt(valueSpans[3]?.textContent || '0')
+          const resultCell = rollTemplate.querySelector('tr:last-child td:last-child')
+          result = parseResult(resultCell?.textContent || '')
+        }
 
         lines.push({
           id,
           type: 'roll',
           speaker,
           text: caption,
-          rollData: { skillName: caption, target, rolled, result }
+          rollData: { skillName: caption, target, rolled, result, rolledAll, bonusResults }
         })
         return
       }
@@ -591,14 +622,56 @@ function ColorPicker({ color, onChange }: { color: string, onChange: (c: string)
   )
 }
 
+type AdminTabId = 'roleplay' | 'trpg' | 'character' | 'game' | 'au' | 'sheets' | 'timeline' | 'chat'
+const TAB_LABELS: Record<AdminTabId, string> = {
+  roleplay: '역극', trpg: 'TRPG', character: '캐릭터', game: '게임 대사',
+  au: 'AU', sheets: '시트', timeline: '타임라인', chat: '채팅',
+}
+const DEFAULT_TAB_ORDER: AdminTabId[] = ['roleplay', 'trpg', 'character', 'game', 'au', 'sheets', 'timeline', 'chat']
+
+function SortableTab({ id, active, onClick }: { id: AdminTabId; active: boolean; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
+  return (
+    <button ref={setNodeRef} style={style} {...attributes} {...listeners} onClick={onClick}
+      className={`flex-1 py-2 rounded text-sm cursor-pointer ${active ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+      {TAB_LABELS[id]}
+    </button>
+  )
+}
+
 export default function AdminPage() {
   // 공통 상태
   const [password, setPassword] = useState('')
   const [adminUser, setAdminUser] = useState('manon')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'roleplay' | 'trpg' | 'character' | 'game' | 'au' | 'sheets' | 'timeline' | 'chat'>('roleplay')
+  const [activeTab, setActiveTab] = useState<AdminTabId>('roleplay')
+  const [tabOrder, setTabOrder] = useState<AdminTabId[]>(DEFAULT_TAB_ORDER)
   const [message, setMessage] = useState('')
+
+  // Tab order persistence
+  useEffect(() => {
+    const saved = localStorage.getItem('admin_tab_order')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as AdminTabId[]
+        const valid = parsed.filter(t => DEFAULT_TAB_ORDER.includes(t))
+        const missing = DEFAULT_TAB_ORDER.filter(t => !valid.includes(t))
+        setTabOrder([...valid, ...missing])
+      } catch {}
+    }
+  }, [])
+  const handleTabReorder = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = tabOrder.indexOf(active.id as AdminTabId)
+    const newIdx = tabOrder.indexOf(over.id as AdminTabId)
+    if (oldIdx === -1 || newIdx === -1) return
+    const next = arrayMove(tabOrder, oldIdx, newIdx)
+    setTabOrder(next)
+    localStorage.setItem('admin_tab_order', JSON.stringify(next))
+  }
   
   // 역극 상태
   const [recordsList, setRecordsList] = useState<DialogueRecord[]>([])
@@ -1339,45 +1412,17 @@ export default function AdminPage() {
         <div className="p-6 border-b border-ink/10">
           <h1 className="font-display text-xl mb-4" style={{ color: '#D9809A', fontStyle: 'italic', letterSpacing: '0.04em' }}>SOMBRE · ADMIN</h1>
           
-          {/* 탭 선택 */}
-          <div className="flex gap-2 mb-4">
-            <button onClick={() => setActiveTab('roleplay')}
-              className={`flex-1 py-2 rounded text-sm ${activeTab === 'roleplay' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
-              역극
-            </button>
-            <button onClick={() => setActiveTab('trpg')}
-              className={`flex-1 py-2 rounded text-sm ${activeTab === 'trpg' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
-              TRPG
-            </button>
-            <button onClick={() => setActiveTab('character')}
-              className={`flex-1 py-2 rounded text-sm ${activeTab === 'character' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
-              캐릭터
-            </button>
-          </div>
-          <div className="flex gap-2 mt-2">
-            <button onClick={() => setActiveTab('game')}
-              className={`flex-1 py-2 rounded text-sm ${activeTab === 'game' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
-              게임 대사
-            </button>
-            <button onClick={() => setActiveTab('au')}
-              className={`flex-1 py-2 rounded text-sm ${activeTab === 'au' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
-              AU
-            </button>
-            <button onClick={() => setActiveTab('sheets')}
-              className={`flex-1 py-2 rounded text-sm ${activeTab === 'sheets' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
-              시트
-            </button>
-          </div>
-          <div className="flex gap-2 mt-2">
-            <button onClick={() => setActiveTab('timeline')}
-              className={`flex-1 py-2 rounded text-sm ${activeTab === 'timeline' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
-              타임라인
-            </button>
-            <button onClick={() => { setActiveTab('chat'); fetchChat() }}
-              className={`flex-1 py-2 rounded text-sm ${activeTab === 'chat' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
-              채팅
-            </button>
-          </div>
+          {/* 탭 선택 (드래그로 순서 변경 가능) */}
+          <DndContext collisionDetection={closestCenter} onDragEnd={handleTabReorder}>
+            <SortableContext items={tabOrder} strategy={verticalListSortingStrategy}>
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {tabOrder.map(id => (
+                  <SortableTab key={id} id={id} active={activeTab === id}
+                    onClick={() => { setActiveTab(id); if (id === 'chat') fetchChat() }} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
           
           {activeTab === 'roleplay' ? (
             <div className="space-y-2">
