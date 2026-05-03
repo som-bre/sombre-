@@ -69,6 +69,26 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// PATCH: TRPG 세션 순서 재정렬
+export async function PATCH(request: NextRequest) {
+  try {
+    const { orderedIds } = await request.json() as { orderedIds: string[] }
+    if (!Array.isArray(orderedIds)) {
+      return NextResponse.json({ error: 'orderedIds 배열이 필요합니다.' }, { status: 400 })
+    }
+    let sessions = await kv.get<TRPGSession[]>(TRPG_KEY)
+    if (!Array.isArray(sessions)) sessions = []
+    const byId = new Map(sessions.map(s => [s.id, s]))
+    const reordered = orderedIds.map(id => byId.get(id)).filter(Boolean) as TRPGSession[]
+    const missing = sessions.filter(s => !orderedIds.includes(s.id))
+    await kv.set(TRPG_KEY, [...reordered, ...missing])
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Failed to reorder TRPG sessions:', error)
+    return NextResponse.json({ error: '순서 변경 실패' }, { status: 500 })
+  }
+}
+
 // DELETE: TRPG 세션 삭제
 export async function DELETE(request: NextRequest) {
   try {

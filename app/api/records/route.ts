@@ -75,6 +75,26 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// PATCH: 기록 순서 재정렬
+export async function PATCH(request: NextRequest) {
+  try {
+    const { orderedIds } = await request.json() as { orderedIds: string[] }
+    if (!Array.isArray(orderedIds)) {
+      return NextResponse.json({ error: 'orderedIds 배열이 필요합니다.' }, { status: 400 })
+    }
+    let records = await kv.get<DialogueRecord[]>(RECORDS_KEY)
+    if (!Array.isArray(records)) records = []
+    const byId = new Map(records.map(r => [r.id, r]))
+    const reordered = orderedIds.map(id => byId.get(id)).filter(Boolean) as DialogueRecord[]
+    const missing = records.filter(r => !orderedIds.includes(r.id))
+    await kv.set(RECORDS_KEY, [...reordered, ...missing])
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Failed to reorder records:', error)
+    return NextResponse.json({ error: '순서 변경 실패' }, { status: 500 })
+  }
+}
+
 // DELETE: 기록 삭제
 export async function DELETE(request: NextRequest) {
   try {

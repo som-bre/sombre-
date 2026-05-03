@@ -623,20 +623,80 @@ function ColorPicker({ color, onChange }: { color: string, onChange: (c: string)
 }
 
 type AdminTabId = 'roleplay' | 'trpg' | 'character' | 'game' | 'au' | 'sheets' | 'timeline' | 'chat'
-const TAB_LABELS: Record<AdminTabId, string> = {
-  roleplay: '역극', trpg: 'TRPG', character: '캐릭터', game: '게임 대사',
-  au: 'AU', sheets: '시트', timeline: '타임라인', chat: '채팅',
-}
-const DEFAULT_TAB_ORDER: AdminTabId[] = ['roleplay', 'trpg', 'character', 'game', 'au', 'sheets', 'timeline', 'chat']
 
-function SortableTab({ id, active, onClick }: { id: AdminTabId; active: boolean; onClick: () => void }) {
+// 드래그 핸들이 있는 정렬 가능한 리스트 아이템
+function SortableListItem({
+  id,
+  active,
+  onClick,
+  onDelete,
+  children,
+  activeClass = 'bg-[#8B1538]/15 text-[#8B1538] border border-[#8B1538]/40',
+  inactiveClass = 'text-ink/60 hover:bg-ink/[0.04] border border-transparent',
+}: {
+  id: string
+  active?: boolean
+  onClick?: () => void
+  onDelete?: () => void
+  children: React.ReactNode
+  activeClass?: string
+  inactiveClass?: string
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
   return (
-    <button ref={setNodeRef} style={style} {...attributes} {...listeners} onClick={onClick}
-      className={`flex-1 py-2 rounded text-sm cursor-pointer ${active ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
-      {TAB_LABELS[id]}
-    </button>
+    <div ref={setNodeRef} style={style} className="flex items-center gap-1 group">
+      <span {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-ink/20 hover:text-ink/50 px-1 select-none" title="드래그하여 순서 변경">⣿</span>
+      <button type="button" onClick={onClick}
+        className={`flex-1 text-left px-3 py-2 rounded text-sm transition-colors ${active ? activeClass : inactiveClass}`}>
+        {children}
+      </button>
+      {onDelete && (
+        <button type="button" onClick={onDelete}
+          className="opacity-0 group-hover:opacity-100 text-ink/30 hover:text-red-500 px-2 text-xs"
+          title="삭제">×</button>
+      )}
+    </div>
+  )
+}
+
+function SortableSheetCard({ sheet, idx, onDelete, onUpdate }: {
+  sheet: any; idx: number; onDelete: () => void; onUpdate: (updates: any) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sheet.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
+  return (
+    <div ref={setNodeRef} style={style}
+      className="group relative p-4 bg-white/60 border border-ink/10 rounded hover:border-ink/25 transition-colors">
+      <span {...attributes} {...listeners}
+        className="absolute top-2 left-2 cursor-grab active:cursor-grabbing text-ink/20 hover:text-ink/50 px-1 select-none"
+        title="드래그하여 순서 변경">⣿</span>
+      <button onClick={onDelete}
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-ink/30 hover:text-red-500 px-1 text-xs"
+        title="삭제">×</button>
+      <div className="flex items-baseline gap-2 mb-1 pl-6">
+        <input value={sheet.title || ''}
+          onChange={(e) => onUpdate({ title: e.target.value })}
+          placeholder="시트 제목"
+          className="font-bold text-sm text-ink/80 bg-transparent border-none outline-none focus:bg-ink/[0.02] flex-1 min-w-0" />
+      </div>
+      <input value={sheet.description || ''}
+        onChange={(e) => onUpdate({ description: e.target.value })}
+        placeholder="한 줄 설명"
+        className="w-full text-xs text-ink/45 bg-transparent border-none outline-none focus:bg-ink/[0.02] mb-3 pl-6" />
+      <div className="flex items-center gap-2 pl-6">
+        <input value={sheet.url || ''}
+          onChange={(e) => onUpdate({ url: e.target.value })}
+          placeholder="https://..."
+          className="flex-1 text-[11px] text-ink/50 bg-ink/[0.03] px-2 py-1.5 rounded border border-ink/10 outline-none focus:border-ink/30 font-mono min-w-0" />
+        {sheet.url && (
+          <a href={sheet.url} target="_blank" rel="noreferrer"
+            className="shrink-0 px-3 py-1.5 bg-ink text-bg text-xs rounded hover:bg-ink/85 transition-colors whitespace-nowrap">
+            바로가기 →
+          </a>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -647,31 +707,7 @@ export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<AdminTabId>('roleplay')
-  const [tabOrder, setTabOrder] = useState<AdminTabId[]>(DEFAULT_TAB_ORDER)
   const [message, setMessage] = useState('')
-
-  // Tab order persistence
-  useEffect(() => {
-    const saved = localStorage.getItem('admin_tab_order')
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as AdminTabId[]
-        const valid = parsed.filter(t => DEFAULT_TAB_ORDER.includes(t))
-        const missing = DEFAULT_TAB_ORDER.filter(t => !valid.includes(t))
-        setTabOrder([...valid, ...missing])
-      } catch {}
-    }
-  }, [])
-  const handleTabReorder = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const oldIdx = tabOrder.indexOf(active.id as AdminTabId)
-    const newIdx = tabOrder.indexOf(over.id as AdminTabId)
-    if (oldIdx === -1 || newIdx === -1) return
-    const next = arrayMove(tabOrder, oldIdx, newIdx)
-    setTabOrder(next)
-    localStorage.setItem('admin_tab_order', JSON.stringify(next))
-  }
   
   // 역극 상태
   const [recordsList, setRecordsList] = useState<DialogueRecord[]>([])
@@ -1006,6 +1042,78 @@ export default function AdminPage() {
       alert(`업로드 실패: ${err.message}`)
     }
     setCharUploading(false)
+  }
+
+  // 리스트 재정렬 핸들러들
+  const reorderRecords = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = recordsList.findIndex(r => r.id === active.id)
+    const newIdx = recordsList.findIndex(r => r.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+    const next = arrayMove(recordsList, oldIdx, newIdx)
+    setRecordsList(next)
+    await fetch('/api/records', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderedIds: next.map(r => r.id) })
+    })
+  }
+  const reorderTRPG = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = trpgList.findIndex(s => s.id === active.id)
+    const newIdx = trpgList.findIndex(s => s.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+    const next = arrayMove(trpgList, oldIdx, newIdx)
+    setTrpgList(next)
+    await fetch('/api/trpg', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderedIds: next.map(s => s.id) })
+    })
+  }
+  const reorderCharPhases = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const phases = characterData[charTab]
+    const oldIdx = phases.findIndex(p => p.id === active.id)
+    const newIdx = phases.findIndex(p => p.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+    const nextPhases = arrayMove(phases, oldIdx, newIdx)
+    setCharacterData(prev => ({ ...prev, [charTab]: nextPhases }))
+    const newSelectedIdx = nextPhases.findIndex(p => p.id === phases[charPhaseIdx]?.id)
+    if (newSelectedIdx !== -1) setCharPhaseIdx(newSelectedIdx)
+  }
+  const reorderAU = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = auList.findIndex(a => a.id === active.id)
+    const newIdx = auList.findIndex(a => a.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+    const next = arrayMove(auList, oldIdx, newIdx)
+    saveAUs(next)
+    const newSelectedIdx = next.findIndex(a => a.id === auList[auSelectedIdx]?.id)
+    if (newSelectedIdx !== -1) setAUSelectedIdx(newSelectedIdx)
+  }
+  const reorderSheets = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = sheetsList.findIndex(s => s.id === active.id)
+    const newIdx = sheetsList.findIndex(s => s.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+    saveSheets(arrayMove(sheetsList, oldIdx, newIdx))
+  }
+  const reorderTimeline = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = timelineEvents.findIndex(e => e.id === active.id)
+    const newIdx = timelineEvents.findIndex(e => e.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+    const next = arrayMove(timelineEvents, oldIdx, newIdx).map((ev, i) => ({ ...ev, order: i }))
+    saveTimeline(next)
+    const newSelectedIdx = next.findIndex(e => e.id === timelineEvents[timelineSelectedIdx]?.id)
+    if (newSelectedIdx !== -1) setTimelineSelectedIdx(newSelectedIdx)
   }
 
   const handleSaveCharacterData = async () => {
@@ -1412,17 +1520,45 @@ export default function AdminPage() {
         <div className="p-6 border-b border-ink/10">
           <h1 className="font-display text-xl mb-4" style={{ color: '#D9809A', fontStyle: 'italic', letterSpacing: '0.04em' }}>SOMBRE · ADMIN</h1>
           
-          {/* 탭 선택 (드래그로 순서 변경 가능) */}
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleTabReorder}>
-            <SortableContext items={tabOrder} strategy={verticalListSortingStrategy}>
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {tabOrder.map(id => (
-                  <SortableTab key={id} id={id} active={activeTab === id}
-                    onClick={() => { setActiveTab(id); if (id === 'chat') fetchChat() }} />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+          {/* 탭 선택 */}
+          <div className="flex gap-2 mb-4">
+            <button onClick={() => setActiveTab('roleplay')}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'roleplay' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              역극
+            </button>
+            <button onClick={() => setActiveTab('trpg')}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'trpg' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              TRPG
+            </button>
+            <button onClick={() => setActiveTab('character')}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'character' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              캐릭터
+            </button>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <button onClick={() => setActiveTab('game')}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'game' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              게임 대사
+            </button>
+            <button onClick={() => setActiveTab('au')}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'au' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              AU
+            </button>
+            <button onClick={() => setActiveTab('sheets')}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'sheets' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              시트
+            </button>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <button onClick={() => setActiveTab('timeline')}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'timeline' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              타임라인
+            </button>
+            <button onClick={() => { setActiveTab('chat'); fetchChat() }}
+              className={`flex-1 py-2 rounded text-sm ${activeTab === 'chat' ? 'bg-[#8B1538] text-white' : 'bg-ink/[0.03] text-ink/40'}`}>
+              채팅
+            </button>
+          </div>
           
           {activeTab === 'roleplay' ? (
             <div className="space-y-2">
@@ -1455,23 +1591,20 @@ export default function AdminPage() {
                 </button>
               </div>
               <div className="space-y-1">
-                {characterData[charTab].map((p, idx) => (
-                  <div key={p.id} className="flex items-center gap-1">
-                    <button onClick={() => setCharPhaseIdx(idx)}
-                      className={`flex-1 text-left px-3 py-2.5 rounded text-sm transition-colors ${
-                        charPhaseIdx === idx
-                          ? charTab === 'manon'
-                            ? 'bg-[#8B1538]/20 text-[#8B1538] border border-[#8B1538]/40'
-                            : 'bg-[#5E7B97]/20 text-[#5E7B97] border border-[#5E7B97]/40'
-                          : 'text-ink/50 hover:bg-ink/[0.04] border border-transparent'
-                      }`}>
-                      {p.label} · {p.name.replace(/[\[\]]/g, '').trim()}
-                    </button>
-                    {characterData[charTab].length > 1 && (
-                      <button onClick={() => handleDeletePhase(idx)} className="text-ink/20 hover:text-red-500 text-xs px-1 shrink-0">✕</button>
-                    )}
-                  </div>
-                ))}
+                <DndContext collisionDetection={closestCenter} onDragEnd={reorderCharPhases}>
+                  <SortableContext items={characterData[charTab].map(p => p.id)} strategy={verticalListSortingStrategy}>
+                    {characterData[charTab].map((p, idx) => (
+                      <SortableListItem key={p.id} id={p.id}
+                        active={charPhaseIdx === idx}
+                        activeClass={charTab === 'manon' ? 'bg-[#8B1538]/20 text-[#8B1538] border border-[#8B1538]/40' : 'bg-[#5E7B97]/20 text-[#5E7B97] border border-[#5E7B97]/40'}
+                        inactiveClass="text-ink/50 hover:bg-ink/[0.04] border border-transparent"
+                        onClick={() => setCharPhaseIdx(idx)}
+                        onDelete={characterData[charTab].length > 1 ? () => handleDeletePhase(idx) : undefined}>
+                        {p.label} · {p.name.replace(/[\[\]]/g, '').trim()}
+                      </SortableListItem>
+                    ))}
+                  </SortableContext>
+                </DndContext>
                 <button onClick={handleAddPhase}
                   className="w-full py-2 border border-dashed border-ink/15 rounded text-ink/30 hover:text-ink/60 text-xs">+ 페이즈 추가</button>
               </div>
@@ -1482,27 +1615,37 @@ export default function AdminPage() {
         {/* 목록 */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {activeTab === 'roleplay' ? (
-            recordsList.map(rec => (
-              <div key={rec.id} onClick={() => { setEditingRecord(rec); setSelectedPhaseIdx(0); setSelectedSectionIdx(0) }}
-                className={`group p-3 rounded cursor-pointer flex justify-between items-center ${editingRecord?.id === rec.id ? 'bg-[#8B1538]/20 border border-[#8B1538]/50' : 'hover:bg-ink/[0.04] border border-transparent'}`}>
-                <div className="truncate">
-                  <div className="font-medium text-sm truncate">{rec.title}</div>
-                  <div className="text-xs text-ink/30">{new Date(rec.createdAt).toLocaleDateString()}</div>
-                </div>
-                <button onClick={(e) => handleDeleteRecord(rec.id, e)} className="text-ink/20 hover:text-red-500 px-2 opacity-0 group-hover:opacity-100">🗑️</button>
-              </div>
-            ))
+            <DndContext collisionDetection={closestCenter} onDragEnd={reorderRecords}>
+              <SortableContext items={recordsList.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                {recordsList.map(rec => (
+                  <SortableListItem key={rec.id} id={rec.id}
+                    active={editingRecord?.id === rec.id}
+                    activeClass="bg-[#8B1538]/20 text-ink border border-[#8B1538]/50"
+                    inactiveClass="text-ink hover:bg-ink/[0.04] border border-transparent"
+                    onClick={() => { setEditingRecord(rec); setSelectedPhaseIdx(0); setSelectedSectionIdx(0) }}
+                    onDelete={() => handleDeleteRecord(rec.id, { stopPropagation: () => {} } as any)}>
+                    <div className="font-medium text-sm truncate">{rec.title}</div>
+                    <div className="text-xs text-ink/30">{new Date(rec.createdAt).toLocaleDateString()}</div>
+                  </SortableListItem>
+                ))}
+              </SortableContext>
+            </DndContext>
           ) : activeTab === 'trpg' ? (
-            trpgList.map(session => (
-              <div key={session.id} onClick={() => setEditingTRPG(session)}
-                className={`group p-3 rounded cursor-pointer flex justify-between items-center ${editingTRPG?.id === session.id ? 'bg-[#8B1538]/20 border border-[#8B1538]/50' : 'hover:bg-ink/[0.04] border border-transparent'}`}>
-                <div className="truncate">
-                  <div className="font-medium text-sm truncate">{session.title}</div>
-                  <div className="text-xs text-ink/30">{session.date || new Date(session.createdAt).toLocaleDateString()}</div>
-                </div>
-                <button onClick={(e) => handleDeleteTRPG(session.id, e)} className="text-ink/20 hover:text-red-500 px-2 opacity-0 group-hover:opacity-100">🗑️</button>
-              </div>
-            ))
+            <DndContext collisionDetection={closestCenter} onDragEnd={reorderTRPG}>
+              <SortableContext items={trpgList.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                {trpgList.map(session => (
+                  <SortableListItem key={session.id} id={session.id}
+                    active={editingTRPG?.id === session.id}
+                    activeClass="bg-[#8B1538]/20 text-ink border border-[#8B1538]/50"
+                    inactiveClass="text-ink hover:bg-ink/[0.04] border border-transparent"
+                    onClick={() => setEditingTRPG(session)}
+                    onDelete={() => handleDeleteTRPG(session.id, { stopPropagation: () => {} } as any)}>
+                    <div className="font-medium text-sm truncate">{session.title}</div>
+                    <div className="text-xs text-ink/30">{session.date || new Date(session.createdAt).toLocaleDateString()}</div>
+                  </SortableListItem>
+                ))}
+              </SortableContext>
+            </DndContext>
           ) : activeTab === 'character' ? (
             <div className="text-center text-ink/30 text-sm py-4">
               <p className="mb-2">좌측에서 캐릭터와<br/>차수를 선택하세요</p>
@@ -1540,22 +1683,19 @@ export default function AdminPage() {
               </button>
               <p className="text-xs text-ink/25 pt-1">각 AU마다 두 캐릭터의 이미지/이름/대사/관계를 설정합니다.</p>
               <div className="space-y-1">
-                {auList.map((au, idx) => (
-                  <div key={au.id} className="flex items-center gap-1 group">
-                    <button onClick={() => setAUSelectedIdx(idx)}
-                      className={`flex-1 text-left px-3 py-2 rounded text-sm transition-colors ${
-                        auSelectedIdx === idx
-                          ? 'bg-[#8B1538]/15 text-[#8B1538] border border-[#8B1538]/40'
-                          : 'text-ink/60 hover:bg-ink/[0.04]'
-                      }`}>
-                      <span className="block truncate">{au.title || '(제목 없음)'}</span>
-                      {au.subtitle && <span className="text-[10px] text-ink/30">{au.subtitle}</span>}
-                    </button>
-                    <button onClick={() => handleDeleteAU(idx)}
-                      className="opacity-0 group-hover:opacity-100 text-ink/30 hover:text-red-500 px-2 text-xs"
-                      title="삭제">×</button>
-                  </div>
-                ))}
+                <DndContext collisionDetection={closestCenter} onDragEnd={reorderAU}>
+                  <SortableContext items={auList.map(a => a.id)} strategy={verticalListSortingStrategy}>
+                    {auList.map((au, idx) => (
+                      <SortableListItem key={au.id} id={au.id}
+                        active={auSelectedIdx === idx}
+                        onClick={() => setAUSelectedIdx(idx)}
+                        onDelete={() => handleDeleteAU(idx)}>
+                        <span className="block truncate">{au.title || '(제목 없음)'}</span>
+                        {au.subtitle && <span className="text-[10px] text-ink/30">{au.subtitle}</span>}
+                      </SortableListItem>
+                    ))}
+                  </SortableContext>
+                </DndContext>
                 {auList.length === 0 && (
                   <p className="text-center text-ink/20 text-xs py-4 italic">아직 AU가 없습니다.</p>
                 )}
@@ -1582,22 +1722,19 @@ export default function AdminPage() {
               </button>
               <p className="text-xs text-ink/25 pt-1">시간순 스토리 이벤트를 관리합니다.</p>
               <div className="space-y-1">
-                {timelineEvents.map((ev, idx) => (
-                  <div key={ev.id} className="flex items-center gap-1 group">
-                    <button onClick={() => setTimelineSelectedIdx(idx)}
-                      className={`flex-1 text-left px-3 py-2 rounded text-sm transition-colors ${
-                        timelineSelectedIdx === idx
-                          ? 'bg-[#8B1538]/15 text-[#8B1538] border border-[#8B1538]/40'
-                          : 'text-ink/60 hover:bg-ink/[0.04]'
-                      }`}>
-                      <span className="text-[10px] text-ink/30 block">{ev.storyDate}</span>
-                      <span className="block truncate">{ev.title || '(제목 없음)'}</span>
-                    </button>
-                    <button onClick={() => handleDeleteTimelineEvent(idx)}
-                      className="opacity-0 group-hover:opacity-100 text-ink/30 hover:text-red-500 px-2 text-xs"
-                      title="삭제">×</button>
-                  </div>
-                ))}
+                <DndContext collisionDetection={closestCenter} onDragEnd={reorderTimeline}>
+                  <SortableContext items={timelineEvents.map(e => e.id)} strategy={verticalListSortingStrategy}>
+                    {timelineEvents.map((ev, idx) => (
+                      <SortableListItem key={ev.id} id={ev.id}
+                        active={timelineSelectedIdx === idx}
+                        onClick={() => setTimelineSelectedIdx(idx)}
+                        onDelete={() => handleDeleteTimelineEvent(idx)}>
+                        <span className="text-[10px] text-ink/30 block">{ev.storyDate}</span>
+                        <span className="block truncate">{ev.title || '(제목 없음)'}</span>
+                      </SortableListItem>
+                    ))}
+                  </SortableContext>
+                </DndContext>
                 {timelineEvents.length === 0 && (
                   <p className="text-center text-ink/20 text-xs py-4 italic">이벤트가 없습니다.</p>
                 )}
@@ -2516,40 +2653,15 @@ export default function AdminPage() {
                 체크리스트, 외부 시트, 링크 등을 정리해둡니다. 어드민 로그인 시에만 보입니다.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-5xl">
-                {sheetsList.map((sheet, idx) => (
-                  <div key={sheet.id}
-                    className="group relative p-4 bg-white/60 border border-ink/10 rounded hover:border-ink/25 transition-colors">
-
-                    <button onClick={() => handleDeleteSheet(idx)}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-ink/30 hover:text-red-500 px-1 text-xs"
-                      title="삭제">×</button>
-
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <input value={sheet.title || ''}
-                        onChange={(e) => updateSheet(idx, { title: e.target.value })}
-                        placeholder="시트 제목"
-                        className="font-bold text-sm text-ink/80 bg-transparent border-none outline-none focus:bg-ink/[0.02] flex-1 min-w-0" />
-                    </div>
-
-                    <input value={sheet.description || ''}
-                      onChange={(e) => updateSheet(idx, { description: e.target.value })}
-                      placeholder="한 줄 설명"
-                      className="w-full text-xs text-ink/45 bg-transparent border-none outline-none focus:bg-ink/[0.02] mb-3" />
-
-                    <div className="flex items-center gap-2">
-                      <input value={sheet.url || ''}
-                        onChange={(e) => updateSheet(idx, { url: e.target.value })}
-                        placeholder="https://..."
-                        className="flex-1 text-[11px] text-ink/50 bg-ink/[0.03] px-2 py-1.5 rounded border border-ink/10 outline-none focus:border-ink/30 font-mono min-w-0" />
-                      {sheet.url && (
-                        <a href={sheet.url} target="_blank" rel="noreferrer"
-                          className="shrink-0 px-3 py-1.5 bg-ink text-bg text-xs rounded hover:bg-ink/85 transition-colors whitespace-nowrap">
-                          바로가기 →
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                <DndContext collisionDetection={closestCenter} onDragEnd={reorderSheets}>
+                  <SortableContext items={sheetsList.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                    {sheetsList.map((sheet, idx) => (
+                      <SortableSheetCard key={sheet.id} sheet={sheet} idx={idx}
+                        onDelete={() => handleDeleteSheet(idx)}
+                        onUpdate={(updates) => updateSheet(idx, updates)} />
+                    ))}
+                  </SortableContext>
+                </DndContext>
 
                 {sheetsList.length === 0 && (
                   <div className="col-span-full text-center text-ink/30 py-16">
