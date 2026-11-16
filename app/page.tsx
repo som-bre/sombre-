@@ -12,6 +12,7 @@ const PROPS = [
   { label: 'Records', sub: 'Roleplay Session Archive', href: '/record', vx: 35, vy: 65, rot: -1.5, sz: 1.0 },
   { label: 'Timeline', sub: 'Doomsday', href: '/timeline', vx: 66, vy: 70, rot: 2.5, sz: 1.05 },
   { label: 'Universes', sub: 'Alternate Worlds', href: '/au', vx: 50, vy: 56, rot: 0.5, sz: 0.94 },
+  { label: 'Greenroom', sub: 'To-do & Care', href: '/greenroom', vx: 50, vy: 77, rot: -1, sz: 0.9 },
 ]
 
 const EXTRAS = [
