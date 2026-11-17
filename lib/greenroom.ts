@@ -72,6 +72,8 @@ export interface Rpg {
   perks: Record<string, number> // permanent upgrades bought with starlight
   boon: number // duels left with doubled rewards
   stage: number // highest unlocked zone index
+  zv: number // zone-list version the stage index refers to (see tidy in greenroomRpg)
+  meal: { id: string; left: number } | null // a dish's battle buff and how many duels it lasts
   kills: number
 }
 
@@ -120,8 +122,10 @@ const ASLEEP = { full: -2, clean: -1, mood: -1, energy: 14 }
 
 const clamp = (n: number) => Math.max(0, Math.min(100, n))
 
+export const ZONE_VERSION = 2
+
 export function defaultRpg(): Rpg {
-  return { lv: 1, xp: 0, inv: {}, gear: [], equip: {}, plots: [null, null, null], job: null, brew: null, dex: { m: {}, i: {}, g: {} }, perks: {}, boon: 0, stage: 0, kills: 0 }
+  return { lv: 1, xp: 0, inv: {}, gear: [], equip: {}, plots: [null, null, null], job: null, brew: null, dex: { m: {}, i: {}, g: {} }, perks: {}, boon: 0, stage: 0, zv: ZONE_VERSION, meal: null, kills: 0 }
 }
 
 export const defaultCats = (): Category[] => [
@@ -287,6 +291,13 @@ function sanitizeRpg(raw: unknown, now: number): Rpg {
     perks: counts(r.perks, 20),
     boon: Math.round(num(r.boon, 0, 0, 999)),
     stage: Math.round(num(r.stage, 0, 0, 20)),
+    zv: Math.round(num(r.zv, 0, 0, 99)),
+    meal: (() => {
+      const m = r.meal as Record<string, unknown> | null | undefined
+      if (!m || typeof m !== 'object' || typeof m.id !== 'string' || !ID_RE.test(m.id)) return null
+      const left = Math.round(num(m.left, 0, 0, 20))
+      return left > 0 ? { id: m.id, left } : null
+    })(),
     kills: Math.round(num(r.kills, 0, 0, 9999999)),
   }
 }

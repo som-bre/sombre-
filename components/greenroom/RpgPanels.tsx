@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react'
 import { SLOTS, type Pet, type Gear, type Todo } from '@/lib/greenroom'
 import {
-  ITEMS, ZONES, MONSTERS, RECIPES, RARITY, STAT, SEEDS, SPOTS, TRIPS, DISHES, BREWS, GOODS, PERKS, MOVES, MOVE_ORDER,
+  ITEMS, ZONES, MONSTERS, RECIPES, RARITY, STAT, SEEDS, SPOTS, TRIPS, DISHES, BREWS, GOODS, PERKS, MOVES, MOVE_ORDER, GROCERY, ELEMENTS, INTENTS,
   SLOT_NAME, MAIN_OF, MAX_LV, MAX_PLUS, MAX_GEAR, LUCK_BONUS,
   isFail, itemName, statsOf, xpNeed, gearMain, gearName, gearSlot, gearPrice, hasMats, monsterPower, battleCost,
   enhanceInfo, dismantleYield, plotCount, tripCost, jobLabel, dexBonus, dexProgress, fmtLeft, fmtDur,
-  startBattle, battleMove, battlePotion, endBattle,
+  startBattle, battleMove, battlePotion, endBattle, monsterOf, nextIntent, patternOf, affinity, doGrocery,
   doCraft, doCook, doBrew, doBottle, doEnhance, doReroll, doEquip, doDismantle, doSellGear, doEat, doSell, doBuy, doBuyPerk, perkLv, perkCost,
   doPlant, doHarvest, doFish, doTrip, doClaim, doCancelJob, doHourglass,
-  type Bag, type Fail, type Battle, type BattleReward, type EnhanceResult, type StatKey, type Stats, type Move, type LogTone,
+  type Bag, type Fail, type Battle, type BattleReward, type EnhanceResult, type StatKey, type Stats, type Move, type LogTone, type MonsterDef, type Intent,
 } from '@/lib/greenroomRpg'
 import { SketchButton, Coins, Gold, GOLD, PINK, LOW } from './ui'
 import MonsterArt from './MonsterArt'
@@ -115,6 +115,8 @@ function Row({ children, faded }: { children: React.ReactNode; faded?: boolean }
 }
 
 const fmtStat = (k: string, v: number) => `${STAT[k as StatKey]?.name ?? k} +${v}${STAT[k as StatKey]?.unit ?? ''}`
+const mealText = (m: { stat: StatKey; pct?: number; add?: number; fights: number }) =>
+  `결투 ${m.fights}회 ${STAT[m.stat].name} +${m.pct ?? m.add}${m.pct ? '%' : STAT[m.stat].unit}`
 const foodText = (f?: { full?: number; mood?: number; energy?: number }) =>
   f ? [f.full && `포만 +${f.full}`, f.mood && `기분 +${f.mood}`, f.energy && `기력 +${f.energy}`].filter(Boolean).join(' · ') : ''
 
@@ -145,6 +147,42 @@ function GearCard({ gear, equipped, children }: { gear: Gear; equipped?: boolean
 
 // ═════════════════════════ 탐험 (turn-based duels) ═════════════════════════
 
+const DANGER = [dim(0.5), dim(0.85), LOW]
+
+function Tag({ children, color = dim(0.6), title }: { children: React.ReactNode; color?: string; title?: string }) {
+  return (
+    <span title={title} className="inline-flex items-center whitespace-nowrap" style={{
+      border: `1px solid ${color}`, color, padding: '0 6px', fontSize: '0.64rem', fontFamily: SERIF, lineHeight: '17px',
+    }}>{children}</span>
+  )
+}
+
+function Affinity({ m, phase2 = false, known }: { m: MonsterDef; phase2?: boolean; known: boolean }) {
+  if (!known) return <span style={{ fontSize: '0.66rem', fontFamily: SERIF, color: dim(0.3) }}>약점 ???</span>
+  const aff = affinity(m, phase2)
+  if (!aff.weak.length && !aff.resist.length) return <span style={{ fontSize: '0.66rem', fontFamily: SERIF, color: dim(0.35) }}>약점 없음</span>
+  return (
+    <span className="inline-flex flex-wrap gap-x-2" style={{ fontSize: '0.66rem', fontFamily: SERIF }}>
+      {aff.weak.map(e => <span key={e} style={{ color: ELEMENTS[e].color }}>약점 {ELEMENTS[e].name}</span>)}
+      {aff.resist.map(e => <span key={e} style={{ color: dim(0.4) }}>저항 {ELEMENTS[e].name}</span>)}
+    </span>
+  )
+}
+
+function Pattern({ list, at }: { list: Intent[]; at?: number }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-[3px]">
+      {list.map((it, i) => (
+        <span key={i} title={INTENTS[it].desc} style={{
+          fontSize: '0.62rem', fontFamily: SERIF, padding: '0 4px', lineHeight: '16px',
+          color: i === at ? '#000' : DANGER[INTENTS[it].danger], background: i === at ? dim(0.85) : 'transparent',
+          border: `1px solid ${i === at ? dim(0.85) : dim(0.15)}`,
+        }}>{INTENTS[it].name}</span>
+      ))}
+    </span>
+  )
+}
+
 const TONE: Record<LogTone, string> = { p: dim(0.9), crit: PINK, m: dim(0.55), warn: LOW, sys: dim(0.4) }
 
 export function HuntPanel({ pet, name, accent, apply, notify, celebrate }: PanelProps) {
@@ -162,7 +200,7 @@ export function HuntPanel({ pet, name, accent, apply, notify, celebrate }: Panel
   const begin = (z: number, i: number) => {
     const r = apply(p => startBattle(p, z, i))
     if (!r) return
-    setSt(statsOf(r.pet))
+    setSt(r.stats)
     setReward(null)
     setBattle(r.battle)
   }
@@ -182,10 +220,37 @@ export function HuntPanel({ pet, name, accent, apply, notify, celebrate }: Panel
   }
 
   if (battle && st) {
-    const m = ZONES[battle.zone].monsters[battle.index]
+    const m = monsterOf(battle)
+    const known = (pet.rpg.dex.m[m.id] ?? 0) > 0
+    const aff = affinity(m, battle.phase2)
+    const intent = nextIntent(battle)
+    const pat = patternOf(battle)
+    const big = intent === 'smash' && battle.charging
     const last = battle.log[battle.log.length - 1]
     const struck = battle.log.slice(-3).some(l => l.tone === 'p' || l.tone === 'crit')
     const potions = Object.entries(pet.rpg.inv).filter(([id, n]) => n > 0 && ITEMS[id]?.battle)
+    const meal = pet.rpg.meal ? ITEMS[pet.rpg.meal.id] : null
+    const tags = (list: (false | [string, string])[]) => list.filter((x): x is [string, string] => !!x)
+    const foeTags = tags([
+      battle.phase2 && ['2막', LOW],
+      battle.enraged && ['격노', LOW],
+      battle.charging && ['힘 모음', LOW],
+      battle.stunned && ['결박', MANA],
+      battle.shell > 0 && [`껍질 ${battle.shell}`, dim(0.75)],
+      battle.mirror && ['반사', LOW],
+      battle.regen > 0 && [`재생 ${battle.regen}`, '#8FC7A0'],
+      battle.howl > 0 && [`포효 ${battle.howl}`, LOW],
+      battle.burn > 0 && [`연소 ${battle.burn}`, ELEMENTS.fire.color],
+      battle.chill > 0 && [`냉기 ${battle.chill}`, ELEMENTS.frost.color],
+    ])
+    const myTags = tags([
+      battle.poison > 0 && [`중독 ${battle.poison}`, '#8FC7A0'],
+      battle.curse > 0 && [`저주 ${battle.curse}`, '#BF94E4'],
+      battle.silence > 0 && [`침묵 ${battle.silence}`, LOW],
+      battle.might > 0 && [`힘 ${battle.might}`, GOLD],
+      battle.feather && !battle.revived && ['깃털', GOLD],
+    ])
+
     return (
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-4">
@@ -194,19 +259,16 @@ export function HuntPanel({ pet, name, accent, apply, notify, celebrate }: Panel
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate" style={{ fontFamily: SERIF, fontSize: '0.95rem', color: m.boss ? '#FFD9E4' : '#fff' }}>
-                {m.name}
-                {battle.charging && <span className="gr-blink" style={{ color: LOW, fontSize: '0.72rem' }}> 힘을 모으는 중!</span>}
-                {battle.stunned && <span style={{ color: MANA, fontSize: '0.72rem' }}> 결박됨</span>}
-              </span>
-              <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontSize: '0.78rem', color: dim(0.6) }}>{battle.mHp} / {m.hp}</span>
+              <span className="truncate" style={{ fontFamily: SERIF, fontSize: '0.95rem', color: m.boss ? '#FFD9E4' : '#fff' }}>{m.name}</span>
+              <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontSize: '0.78rem', color: dim(0.6) }}>{battle.mHp} / {battle.mMax}</span>
             </div>
-            <Bar value={battle.mHp} max={m.hp} />
-            <div className="flex items-baseline justify-between mt-3">
-              <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontSize: '0.95rem', color: accent }}>
-                {name}
-                {battle.might > 0 && <span style={{ color: GOLD, fontSize: '0.7rem', fontFamily: SERIF, fontStyle: 'normal' }}> 힘의 물약 {battle.might}회</span>}
-              </span>
+            <Bar value={battle.mHp} max={battle.mMax} />
+            <div className="flex flex-wrap items-center gap-[4px] mt-[5px]" style={{ minHeight: 19 }}>
+              <Affinity m={m} phase2={battle.phase2} known={known} />
+              {foeTags.map(([t, c]) => <Tag key={t} color={c}>{t}</Tag>)}
+            </div>
+            <div className="flex items-baseline justify-between mt-2">
+              <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontSize: '0.95rem', color: accent }}>{name}</span>
               <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontSize: '0.78rem', color: dim(0.6) }}>{battle.pHp} / {battle.pMax}</span>
             </div>
             <Bar value={battle.pHp} max={battle.pMax} color={battle.pHp / battle.pMax < 0.3 ? LOW : accent} />
@@ -214,8 +276,24 @@ export function HuntPanel({ pet, name, accent, apply, notify, celebrate }: Panel
               <div className="flex-1"><Bar value={battle.mp} max={battle.mpMax} color={MANA} height={5} /></div>
               <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontSize: '0.7rem', color: MANA }}>마력 {battle.mp} / {battle.mpMax}</span>
             </div>
+            {(myTags.length > 0 || meal) && (
+              <div className="flex flex-wrap gap-[4px] mt-[5px]">
+                {myTags.map(([t, c]) => <Tag key={t} color={c}>{t}</Tag>)}
+                {meal && <Tag color={GOLD} title={meal.desc}>{meal.name}</Tag>}
+              </div>
+            )}
           </div>
         </div>
+
+        {!battle.over && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1" style={{ fontSize: '0.78rem', fontFamily: SERIF }}>
+            <span style={{ color: dim(0.45) }}>다음 행동</span>
+            <span title={INTENTS[intent].desc} className={big ? 'gr-blink' : ''} style={{ color: big ? LOW : DANGER[INTENTS[intent].danger], fontSize: '0.88rem' }}>
+              {battle.stunned ? '— (결박됨)' : big ? '강타 ×2.4' : INTENTS[intent].name}
+            </span>
+            {known && <Pattern list={pat} at={battle.step % pat.length} />}
+          </div>
+        )}
 
         <div aria-live="polite" style={{ minHeight: 112, fontSize: '0.78rem', fontFamily: SCRIPT, lineHeight: 1.75 }}>
           {battle.log.slice(-5).map((l, i, arr) => (
@@ -229,11 +307,17 @@ export function HuntPanel({ pet, name, accent, apply, notify, celebrate }: Panel
               {MOVE_ORDER.map(mv => {
                 const d = MOVES[mv]
                 const locked = pet.rpg.lv < d.lv
+                const hushed = battle.silence > 0 && d.mp > 0 && mv !== 'solvo'
+                const fx = known && d.el ? (aff.weak.includes(d.el) ? '약점' : aff.resist.includes(d.el) ? '저항' : '') : ''
                 return (
-                  <SketchButton key={mv} disabled={locked || battle.mp < d.mp} onClick={() => cast(mv)} title={d.desc}
-                    style={{ padding: '8px 4px', fontFamily: SERIF }}>
+                  <SketchButton key={mv} disabled={locked || hushed || battle.mp < d.mp} onClick={() => cast(mv)} title={d.desc}
+                    style={{ padding: '7px 4px', fontFamily: SERIF }}>
                     <span className="flex flex-col items-center leading-tight">
-                      <span style={{ fontSize: '0.84rem' }}>{d.name}</span>
+                      <span className="inline-flex items-center gap-[5px]" style={{ fontSize: '0.84rem' }}>
+                        {d.el && <span style={{ width: 6, height: 6, borderRadius: 6, background: ELEMENTS[d.el].color }} />}
+                        {d.name}
+                        {fx && <span style={{ fontSize: '0.58rem', color: fx === '약점' && d.el ? ELEMENTS[d.el].color : dim(0.4) }}>{fx}</span>}
+                      </span>
                       <span style={{ fontSize: '0.62rem', fontFamily: DISPLAY, fontStyle: 'italic', color: dim(0.45) }}>
                         {locked ? `Lv.${d.lv}` : d.latin}{!locked && d.mp > 0 && <span style={{ color: MANA }}> · {d.mp}</span>}
                       </span>
@@ -263,16 +347,14 @@ export function HuntPanel({ pet, name, accent, apply, notify, celebrate }: Panel
                   {reward.leveled > 0 && <span style={{ color: PINK }}> · 레벨 업! Lv.{pet.rpg.lv}</span>}
                 </p>
                 <Loot loot={reward.loot} />
-                {reward.firstKill && <p style={{ fontSize: '0.78rem', fontFamily: SCRIPT, color: GOLD }}>도감 등록</p>}
+                {reward.firstKill && <p style={{ fontSize: '0.78rem', fontFamily: SCRIPT, color: GOLD }}>도감 등록 · 패턴과 약점 기록</p>}
                 {reward.unlocked !== null && (
-                  <p style={{ fontSize: '0.8rem', fontFamily: SCRIPT, color: PINK }}>새 구역이 열렸어요 — {ZONES[reward.unlocked].name}</p>
+                  <p style={{ fontSize: '0.8rem', fontFamily: SCRIPT, color: PINK }}>새 구역 — {ZONES[reward.unlocked].name}</p>
                 )}
               </div>
             ) : (
               <p style={{ fontSize: '0.78rem', fontFamily: SCRIPT, color: dim(0.55), marginTop: 2 }}>
-                {battle.over === 'fled'
-                  ? '얻은 것 없음'
-                  : '기분 −8'}
+                {battle.over === 'fled' ? '얻은 것 없음' : '기분 −8'}
               </p>
             )}
             <div className="flex gap-2 mt-3">
@@ -304,9 +386,13 @@ export function HuntPanel({ pet, name, accent, apply, notify, celebrate }: Panel
           전투력 {live.power} · 컨디션 ×{live.cond.toFixed(2)} · 기력 {Math.floor(pet.energy)}
           {pet.rpg.job && <span style={{ color: PINK }}> · {jobLabel(pet.rpg.job)}</span>}
         </span>
-        {(pet.rpg.boon > 0 || (pet.rpg.inv.feather ?? 0) > 0) && (
+        {(pet.rpg.boon > 0 || (pet.rpg.inv.feather ?? 0) > 0 || pet.rpg.meal) && (
           <span className="block" style={{ color: GOLD }}>
-            {[pet.rpg.boon > 0 && `별의 가호 ${pet.rpg.boon}회 남음 (보상 2배)`, (pet.rpg.inv.feather ?? 0) > 0 && `불사조 깃털 ${pet.rpg.inv.feather}개`].filter(Boolean).join(' · ')}
+            {[
+              pet.rpg.meal && `${itemName(pet.rpg.meal.id)} ${pet.rpg.meal.left}회`,
+              pet.rpg.boon > 0 && `별의 가호 ${pet.rpg.boon}회`,
+              (pet.rpg.inv.feather ?? 0) > 0 && `불사조 깃털 ${pet.rpg.inv.feather}개`,
+            ].filter(Boolean).join(' · ')}
           </span>
         )}
       </p>
@@ -327,8 +413,10 @@ export function HuntPanel({ pet, name, accent, apply, notify, celebrate }: Panel
                   체력 {m.hp} · 공격 {m.atk} · 방어 {m.def}
                   <span style={{ color: ratio >= 1 ? '#8FC7A0' : ratio >= 0.75 ? dim(0.6) : LOW }}> · 권장 전투력 {need}</span>
                 </p>
-                <p className="truncate" style={{ fontSize: '0.68rem', fontFamily: SERIF, color: dim(0.35) }}>
-                  {known ? m.drops.map(dr => itemName(dr.id)).join(' · ') : '전리품 ???'}
+                <p className="flex flex-wrap gap-x-2" style={{ fontSize: '0.68rem', fontFamily: SERIF, color: dim(0.35) }}>
+                  <Affinity m={m} known={known} />
+                  {m.phase && known && <span style={{ color: LOW }}>2막 있음</span>}
+                  <span className="truncate">{known ? m.drops.map(dr => itemName(dr.id)).join(' · ') : '전리품 ???'}</span>
                 </p>
               </div>
               <Mini onClick={() => begin(zone, i)}>결투<span style={{ color: dim(0.5) }}> · {battleCost(m, pet.rpg)}</span></Mini>
@@ -677,7 +765,9 @@ export function ForgePanel({ pet, apply, celebrate }: PanelProps) {
               <Row key={id}>
                 <div className="min-w-0">
                   <span style={{ fontFamily: SERIF, fontSize: '0.88rem', color: dim(0.9) }}>{itemName(dish.out)}</span>
+                  {dish.n > 1 && <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontSize: '0.74rem', color: dim(0.5) }}> ×{dish.n}</span>}
                   <span style={{ fontFamily: SERIF, fontSize: '0.7rem', color: dim(0.45), marginLeft: 8 }}>{foodText(ITEMS[dish.out]?.food)}</span>
+                  {ITEMS[dish.out]?.meal && <span style={{ fontFamily: SERIF, fontSize: '0.7rem', color: GOLD, marginLeft: 8 }}>{mealText(ITEMS[dish.out].meal!)}</span>}
                   <Mats mats={dish.mats} inv={inv} />
                 </div>
                 <Mini onClick={() => { if (apply(p => doCook(p, id))) celebrate('완성!') }}
@@ -687,6 +777,22 @@ export function ForgePanel({ pet, apply, celebrate }: PanelProps) {
               </Row>
             ))}
           </ul>
+          <section>
+            <Label>식료품</Label>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-5">
+              {Object.entries(GROCERY).map(([id, price]) => (
+                <li key={id} className="flex items-center justify-between gap-2 py-[6px]" style={{ borderBottom: `1px solid ${dim(0.06)}` }}>
+                  <span style={{ fontSize: '0.82rem', fontFamily: SERIF, color: dim(0.85) }}>
+                    {itemName(id)} <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', color: dim(0.45) }}>×{inv[id] ?? 0}</span>
+                  </span>
+                  <span className="flex gap-[6px]">
+                    <Mini onClick={() => apply(p => doGrocery(p, id, 1))}>+1 <Gold n={price} size="0.7rem" /></Mini>
+                    <Mini onClick={() => apply(p => doGrocery(p, id, 5))}>+5</Mini>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
         </>
       )}
 
@@ -869,6 +975,7 @@ export function BagPanel({ pet, name, accent, apply, celebrate }: PanelProps) {
                     <span className="min-w-0 truncate" style={{ fontSize: '0.82rem', fontFamily: SERIF, color: dim(0.88) }}>
                       {itemName(id)} <span style={{ fontFamily: DISPLAY, fontStyle: 'italic', color: dim(0.5) }}>×{n}</span>
                       <span style={{ fontSize: '0.66rem', color: dim(0.4), marginLeft: 6 }}>{foodText(it?.food) || (it?.battle ? '결투용' : '')}</span>
+                      {it?.meal && <span style={{ fontSize: '0.66rem', color: GOLD, marginLeft: 6 }}>{mealText(it.meal)}</span>}
                     </span>
                     <span className="flex gap-[6px] shrink-0">
                       {it?.food && <Mini onClick={() => { if (apply(p => doEat(p, id))) celebrate(it.kind === 'food' ? '냠' : '꿀꺽') }}>{it.kind === 'food' ? '먹이기' : '마시기'}</Mini>}
@@ -1017,6 +1124,17 @@ export function CodexPanel({ pet }: PanelProps) {
                         <p style={{ fontSize: '0.68rem', fontFamily: SERIF, color: dim(0.38) }}>
                           체력 {m.hp} · 공격 {m.atk} · 방어 {m.def} · {m.drops.map(dr => itemName(dr.id)).join(', ')}
                         </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <Affinity m={m} known />
+                          {m.enrage && <span style={{ fontSize: '0.66rem', fontFamily: SERIF, color: LOW }}>35% 이하 격노</span>}
+                        </div>
+                        <div className="mt-1"><Pattern list={m.pattern} /></div>
+                        {m.phase && (
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span style={{ fontSize: '0.64rem', fontFamily: SERIF, color: LOW }}>2막 (50%)</span>
+                            <Pattern list={m.phase.pattern} />
+                          </div>
+                        )}
                       </>
                     ) : null}
                   </div>
