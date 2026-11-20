@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { TIERS, MAX_TEXT, MAX_MEMO, type Todo, type Category } from '@/lib/greenroom'
 import { statsOf } from '@/lib/greenroomRpg'
 import {
@@ -115,16 +116,27 @@ function Editor({ todo, cats, today, onPatch, onRemove, onClose }: {
   const [text, setText] = useState(todo.text)
   const [memo, setMemo] = useState(todo.memo ?? '')
   const [time, setTime] = useState(todo.time ?? '')
-  const dirty = text !== todo.text || memo !== (todo.memo ?? '') || time !== (todo.time ?? '')
   const date = todo.date ?? today
+  // Edits save themselves: the name on Enter or when the field loses focus, the memo on blur, the time at once.
+  const saveText = () => {
+    const v = text.trim()
+    if (!v) { setText(todo.text); return }
+    if (v !== todo.text) onPatch({ text: v })
+  }
+  const saveMemo = () => { if (memo.trim() !== (todo.memo ?? '')) onPatch({ memo }) }
   return (
     <div className="flex flex-col gap-2 pb-3 pl-[29px]" style={{ borderBottom: `1px solid ${dim(0.06)}` }}>
-      <input value={text} onChange={e => setText(e.target.value)} maxLength={MAX_TEXT} aria-label="할 일 내용" className="gr-input outline-none w-full" style={fieldStyle} />
-      <textarea value={memo} onChange={e => setMemo(e.target.value)} maxLength={MAX_MEMO} rows={2} placeholder="메모" aria-label="메모"
+      <input value={text} onChange={e => setText(e.target.value)} onBlur={saveText} maxLength={MAX_TEXT} aria-label="할 일 내용"
+        onKeyDown={e => {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.blur() }
+          if (e.key === 'Escape') { setText(todo.text); e.currentTarget.blur() }
+        }}
+        className="gr-input outline-none w-full" style={fieldStyle} />
+      <textarea value={memo} onChange={e => setMemo(e.target.value)} onBlur={saveMemo} maxLength={MAX_MEMO} rows={2} placeholder="메모" aria-label="메모"
         className="gr-input outline-none w-full resize-none" style={{ ...fieldStyle, fontSize: '0.78rem', border: `1px solid ${dim(0.12)}`, padding: '6px 8px' }} />
       <div className="flex flex-wrap items-center gap-2" style={{ fontSize: '0.72rem', fontFamily: SERIF, color: dim(0.5) }}>
         <label className="inline-flex items-center gap-2">시간
-          <input type="time" value={time} onChange={e => setTime(e.target.value)} className="outline-none" style={{ ...fieldStyle, fontSize: '0.76rem', padding: '2px' }} />
+          <input type="time" value={time} onChange={e => { setTime(e.target.value); onPatch({ time: e.target.value || null }) }} className="outline-none" style={{ ...fieldStyle, fontSize: '0.76rem', padding: '2px' }} />
         </label>
         <label className="inline-flex items-center gap-2">날짜
           <input type="date" value={date} onChange={e => e.target.value && onPatch({ date: e.target.value })} className="outline-none" style={{ ...fieldStyle, fontSize: '0.76rem', padding: '2px' }} />
@@ -141,13 +153,126 @@ function Editor({ todo, cats, today, onPatch, onRemove, onClose }: {
         <Chip on={!todo.cat || !cats.some(c => c.id === todo.cat)} color={NONE} onClick={() => onPatch({ cat: null })}>분류 없음</Chip>
       </div>
       <div className="flex flex-wrap gap-2 mt-1">
-        {dirty && <Mini onClick={() => onPatch({ text, memo, time: time || null })} style={{ color: PINK }}>저장</Mini>}
         {!todo.done && date !== today && <Mini onClick={() => onPatch({ date: today })}>오늘로</Mini>}
         {!todo.done && <Mini onClick={() => onPatch({ date: addDays(date < today ? today : date, 1) })}>내일로 미루기</Mini>}
         <Mini onClick={onRemove}>{todo.routine && !todo.done ? '오늘은 건너뛰기' : '삭제'}</Mini>
         <Mini onClick={onClose}>닫기</Mini>
       </div>
     </div>
+  )
+}
+
+// ═════════════════════════ new to-do (portal popup) ═════════════════════════
+
+export interface Draft { text: string; memo: string; date: string; time: string; cat: string; tier: number; days: number[] }
+
+function Composer({ start, cats, today, accent, onCreate, onClose }: {
+  start: Draft; cats: Category[]; today: string; accent: string
+  onCreate: (d: Draft) => boolean // true when it was added
+  onClose: () => void
+}) {
+  const [d, setD] = useState<Draft>(start)
+  const [made, setMade] = useState(0)
+  const textRef = useRef<HTMLInputElement>(null)
+  const set = (patch: Partial<Draft>) => setD(cur => ({ ...cur, ...patch }))
+  const repeat = d.days.length > 0
+  const catOk = cats.some(c => c.id === d.cat) ? d.cat : ''
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const create = (again: boolean) => {
+    if (!d.text.trim() || !onCreate({ ...d, cat: catOk })) return
+    if (!again) { onClose(); return }
+    setMade(n => n + 1)
+    set({ text: '', memo: '' })
+    textRef.current?.focus()
+  }
+  const toggleDay = (i: number) => set({ days: d.days.includes(i) ? d.days.filter(x => x !== i) : [...d.days, i].sort() })
+  const dateChip = (label: string, value: string) => (
+    <Chip on={d.date === value} onClick={() => set({ date: value })}>{label}</Chip>
+  )
+  const field: React.CSSProperties = { ...fieldStyle, width: '100%' }
+
+  return createPortal(
+    <div className="gr-modal fixed inset-0 z-[600] flex items-end sm:items-center justify-center sm:p-4" style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(3px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div role="dialog" aria-modal="true" aria-label="새 할 일" className="relative w-full sm:max-w-md flex flex-col gap-4"
+        style={{ background: '#050505', padding: '20px 20px 16px', maxHeight: '92vh', overflowY: 'auto' }}>
+        <span className="absolute inset-0 pointer-events-none sketch-jitter-line" style={{ border: `1px solid ${dim(0.25)}`, filter: 'url(#sketchy)' }} />
+
+        <div className="relative flex items-baseline justify-between">
+          <span className="heading-display" style={{ fontSize: '1.15rem', fontStyle: 'italic', color: '#fff' }}>
+            새 할 일{made > 0 && <span style={{ fontSize: '0.74rem', color: accent, marginLeft: 8, fontStyle: 'normal', fontFamily: SERIF }}>{made}개 추가됨</span>}
+          </span>
+          <button onClick={onClose} aria-label="닫기" className="cursor-pointer" style={{ background: 'none', color: dim(0.5), fontSize: '1.1rem' }}>×</button>
+        </div>
+
+        <form className="relative flex flex-col gap-4" onSubmit={e => { e.preventDefault(); create(false) }}>
+          <input ref={textRef} value={d.text} onChange={e => set({ text: e.target.value })} maxLength={MAX_TEXT} autoFocus
+            placeholder="할 일" aria-label="할 일 내용" className="gr-input outline-none" style={{ ...field, fontSize: '1rem', padding: '8px 2px' }} />
+          <textarea value={d.memo} onChange={e => set({ memo: e.target.value })} maxLength={MAX_MEMO} rows={2} placeholder="메모" aria-label="메모"
+            className="gr-input outline-none resize-none" style={{ ...field, fontSize: '0.82rem', border: `1px solid ${dim(0.12)}`, padding: '6px 8px' }} />
+
+          <div className="flex flex-col gap-2">
+            <Label>{repeat ? '시작일' : '날짜'}</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              {dateChip('오늘', today)}
+              {dateChip('내일', addDays(today, 1))}
+              <input type="date" value={d.date} onChange={e => e.target.value && set({ date: e.target.value })} aria-label="날짜"
+                className="outline-none" style={{ ...fieldStyle, fontSize: '0.8rem', padding: '2px' }} />
+              <input type="time" value={d.time} onChange={e => set({ time: e.target.value })} aria-label="시간"
+                className="outline-none" style={{ ...fieldStyle, fontSize: '0.8rem', padding: '2px' }} />
+              {d.time && <Mini onClick={() => set({ time: '' })}>시간 빼기</Mini>}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>반복</Label>
+            <div className="flex flex-wrap items-center gap-[6px]" role="group" aria-label="반복 요일">
+              {WEEKDAYS.map((w, i) => (
+                <button key={w} type="button" aria-pressed={d.days.includes(i)} onClick={() => toggleDay(i)}
+                  className="cursor-pointer" style={{
+                    width: 30, height: 28, fontSize: '0.76rem', fontFamily: SERIF,
+                    background: d.days.includes(i) ? dim(0.1) : 'transparent',
+                    border: `1px solid ${d.days.includes(i) ? accent : dim(0.12)}`, color: d.days.includes(i) ? '#fff' : dim(0.4),
+                  }}>{w}</button>
+              ))}
+              <Mini on={d.days.length === 7} onClick={() => set({ days: [0, 1, 2, 3, 4, 5, 6] })}>매일</Mini>
+              <Mini on={d.days.join() === '1,2,3,4,5'} onClick={() => set({ days: [1, 2, 3, 4, 5] })}>평일</Mini>
+              <Mini on={!repeat} onClick={() => set({ days: [] })}>안 함</Mini>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>분류</Label>
+            <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="분류">
+              {cats.map(c => <Chip key={c.id} on={catOk === c.id} color={c.color} onClick={() => set({ cat: c.id })}>{c.name}</Chip>)}
+              <Chip on={!catOk} color={NONE} onClick={() => set({ cat: '' })}>분류 없음</Chip>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>보상</Label>
+            <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="보상 크기">
+              {TIERS.map((t, i) => <Chip key={t.label} on={d.tier === i} onClick={() => set({ tier: i })}>{t.label} <Coins n={t.coins} size="0.7rem" /></Chip>)}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Mini onClick={() => create(true)} disabled={!d.text.trim()}>추가하고 하나 더</Mini>
+            <SketchButton type="submit" disabled={!d.text.trim()}
+              style={{ padding: '8px 22px', fontSize: '0.8rem', fontFamily: SERIF, color: accent }}>
+              {repeat ? '루틴 만들기' : '추가'}
+            </SketchButton>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -168,24 +293,18 @@ export function TodoPanel({ pet, name, accent, apply, celebrate, onCoins, ready,
   const [day, setDay] = useState(today)
   const [month, setMonth] = useState(today.slice(0, 7))
   const [showCal, setShowCal] = useState(true)
-  const [draft, setDraft] = useState('')
-  const [tier, setTier] = useState(1)
-  const [cat, setCat] = useState<string>(() => pet.cats[0]?.id ?? '')
+  const [composer, setComposer] = useState<Draft | null>(null)
+  const [last, setLast] = useState(() => ({ tier: 1, cat: pet.cats[0]?.id ?? '' }))
   const [openId, setOpenId] = useState<string | null>(null)
   const [section, setSection] = useState<Section>(null)
   const [confirmDrop, setConfirmDrop] = useState(false)
   // archived months that have been opened: month → { n: archived count when loaded, list }
   const [arch, setArch] = useState<Record<string, { n: number; list: Todo[] | null }>>({})
-  // routine form
-  const [rText, setRText] = useState('')
-  const [rDays, setRDays] = useState<number[]>([1, 2, 3, 4, 5])
-  const [rTime, setRTime] = useState('')
   // category form
   const [cName, setCName] = useState('')
   const [cColor, setCColor] = useState(CAT_COLORS[3])
 
   const cats = pet.cats
-  const catOk = cats.some(c => c.id === cat) ? cat : ''
   const catOf = (t: Todo) => cats.find(c => c.id === t.cat) ?? null
   const items = itemsFor(pet, day, today)
   const late = overdue(pet, today)
@@ -224,9 +343,17 @@ export function TodoPanel({ pet, name, accent, apply, celebrate, onCoins, ready,
 
   const pick = (d: string) => { setView('day'); setDay(d); setMonth(d.slice(0, 7)); setOpenId(null) }
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (apply(p => addTodo(p, { text: draft, tier, date: day, cat: catOk || undefined }))) setDraft('')
+  const openComposer = (days: number[] = []) =>
+    setComposer({ text: '', memo: '', date: day < today ? today : day, time: '', cat: last.cat, tier: last.tier, days })
+  const create = (d: Draft): boolean => {
+    const base = { text: d.text, memo: d.memo, tier: d.tier, cat: d.cat || undefined, time: d.time || undefined }
+    const ok = d.days.length
+      ? apply(p => addRoutine(p, { ...base, days: d.days }, d.date))
+      : apply(p => addTodo(p, { ...base, date: d.date }))
+    if (!ok) return false
+    setLast({ tier: d.tier, cat: d.cat })
+    if (!d.days.length && d.date !== day) pick(d.date)
+    return true
   }
 
   const toggle = (id: string) => {
@@ -257,6 +384,9 @@ export function TodoPanel({ pet, name, accent, apply, celebrate, onCoins, ready,
 
   return (
     <div className="flex flex-col gap-3">
+      {composer && (
+        <Composer start={composer} cats={cats} today={today} accent={accent} onCreate={create} onClose={() => setComposer(null)} />
+      )}
       {/* streak & month */}
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1" style={{ fontSize: '0.74rem', fontFamily: SERIF, color: dim(0.55) }}>
         <span>
@@ -348,11 +478,11 @@ export function TodoPanel({ pet, name, accent, apply, celebrate, onCoins, ready,
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <button onClick={() => pick(addDays(day, -1))} aria-label="전날" className="cursor-pointer" style={{ background: 'none', color: dim(0.5), fontFamily: DISPLAY, padding: '0 4px' }}>‹</button>
-              <span style={{ fontFamily: SERIF, fontSize: '0.92rem', color: day === today ? '#fff' : dim(0.8) }}>{dayLabel(day, today)}</span>
+              <span className="whitespace-nowrap" style={{ fontFamily: SERIF, fontSize: 'clamp(0.8rem, 3.4vw, 0.92rem)', color: day === today ? '#fff' : dim(0.8) }}>{dayLabel(day, today)}</span>
               <button onClick={() => pick(addDays(day, 1))} aria-label="다음 날" className="cursor-pointer" style={{ background: 'none', color: dim(0.5), fontFamily: DISPLAY, padding: '0 4px' }}>›</button>
             </div>
             <div className="flex items-center gap-2">
-              <span className="label-caps" style={{ fontSize: '0.5rem', letterSpacing: '0.22em', color: dim(0.35) }}>{left} LEFT · {items.length - left + archived.length} DONE</span>
+              <span className="label-caps hidden sm:inline" style={{ fontSize: '0.5rem', letterSpacing: '0.22em', color: dim(0.35) }}>{left} LEFT · {items.length - left + archived.length} DONE</span>
               {day !== today && <Mini onClick={() => pick(today)}>오늘</Mini>}
             </div>
           </div>
@@ -372,24 +502,9 @@ export function TodoPanel({ pet, name, accent, apply, celebrate, onCoins, ready,
             </Box>
           )}
 
-          <form onSubmit={submit}>
-            <div className="flex items-center gap-2">
-              <input value={draft} onChange={e => setDraft(e.target.value)} maxLength={MAX_TEXT}
-                placeholder={day === today ? '오늘 할 일을 적어주세요' : `${parseDay(day).getMonth() + 1}월 ${parseDay(day).getDate()}일에 할 일`} aria-label="새 할 일"
-                className="gr-input flex-1 min-w-0 outline-none" style={{ ...fieldStyle, fontSize: '0.9rem', padding: '7px 2px' }} />
-              <SketchButton type="submit" disabled={!draft.trim()} title="추가"
-                style={{ padding: '6px 14px', fontSize: '0.72rem', letterSpacing: '0.18em', fontFamily: "'Pretendard Variable', sans-serif" }}>
-                ADD
-              </SketchButton>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-2" role="radiogroup" aria-label="분류">
-              {cats.map(c => <Chip key={c.id} on={catOk === c.id} color={c.color} onClick={() => setCat(c.id)}>{c.name}</Chip>)}
-              <Chip on={!catOk} color={NONE} onClick={() => setCat('')}>분류 없음</Chip>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-2" role="radiogroup" aria-label="보상 크기">
-              {TIERS.map((t, i) => <Chip key={t.label} on={tier === i} onClick={() => setTier(i)}>{t.label} <Coins n={t.coins} size="0.7rem" /></Chip>)}
-            </div>
-          </form>
+          <SketchButton onClick={() => openComposer()} style={{ padding: '10px', fontFamily: SERIF, fontSize: '0.86rem', color: accent }}>
+            + 새 할 일
+          </SketchButton>
 
           {items.length === 0 && !archivedToday ? (
             <div className="flex flex-col items-center gap-3 py-7 opacity-70">
@@ -501,7 +616,7 @@ export function TodoPanel({ pet, name, accent, apply, celebrate, onCoins, ready,
                   <span className="min-w-0">
                     <span className="break-words" style={{ fontFamily: SERIF, fontSize: '0.86rem', color: dim(0.9) }}>{r.text}</span>
                     <span className="block" style={{ fontSize: '0.68rem', fontFamily: SERIF, color: dim(0.45) }}>
-                      {routineDays(r)}{r.time ? ` · ${r.time}` : ''} · <span style={{ color: c?.color ?? NONE }}>{c?.name ?? '분류 없음'}</span> · <Coins n={TIERS[r.tier]?.coins ?? 0} size="0.68rem" />
+                      {routineDays(r)}{r.time ? ` · ${r.time}` : ''}{r.memo ? ` · ${r.memo}` : ''} · <span style={{ color: c?.color ?? NONE }}>{c?.name ?? '분류 없음'}</span> · <Coins n={TIERS[r.tier]?.coins ?? 0} size="0.68rem" />
                     </span>
                   </span>
                   <Mini onClick={() => apply(p => removeRoutine(p, r.id))}>삭제</Mini>
@@ -509,33 +624,9 @@ export function TodoPanel({ pet, name, accent, apply, celebrate, onCoins, ready,
               )
             })}
           </ul>
-          <form className="flex flex-col gap-2 mt-3" onSubmit={e => {
-            e.preventDefault()
-            if (apply(p => addRoutine(p, { text: rText, tier, days: rDays, cat: catOk || undefined, time: rTime || undefined }, today))) { setRText(''); setRTime('') }
-          }}>
-            <div className="flex items-center gap-2">
-              <input value={rText} onChange={e => setRText(e.target.value)} maxLength={MAX_TEXT} placeholder="새 루틴 (예: 스트레칭 10분)" aria-label="새 루틴"
-                className="gr-input flex-1 min-w-0 outline-none" style={fieldStyle} />
-              <input type="time" value={rTime} onChange={e => setRTime(e.target.value)} aria-label="루틴 시간" className="outline-none" style={{ ...fieldStyle, fontSize: '0.76rem' }} />
-            </div>
-            <div className="flex flex-wrap items-center gap-[6px]" role="group" aria-label="반복 요일">
-              {WEEKDAYS.map((w, i) => (
-                <button key={w} type="button" aria-pressed={rDays.includes(i)} onClick={() => setRDays(d => (d.includes(i) ? d.filter(x => x !== i) : [...d, i]))}
-                  className="cursor-pointer" style={{
-                    width: 28, height: 26, fontSize: '0.74rem', fontFamily: SERIF,
-                    background: rDays.includes(i) ? dim(0.1) : 'transparent',
-                    border: `1px solid ${rDays.includes(i) ? accent : dim(0.12)}`, color: rDays.includes(i) ? '#fff' : dim(0.4),
-                  }}>{w}</button>
-              ))}
-              <Mini onClick={() => setRDays([0, 1, 2, 3, 4, 5, 6])}>매일</Mini>
-              <Mini onClick={() => setRDays([1, 2, 3, 4, 5])}>평일</Mini>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <Note>분류·보상은 날짜별 보기에서 고른 값</Note>
-              <SketchButton type="submit" disabled={!rText.trim() || rDays.length === 0}
-                style={{ padding: '6px 14px', fontSize: '0.74rem', fontFamily: SERIF, whiteSpace: 'nowrap' }}>루틴 추가</SketchButton>
-            </div>
-          </form>
+          <div className="mt-3">
+            <Mini onClick={() => openComposer([1, 2, 3, 4, 5])} style={{ color: accent }}>+ 새 루틴</Mini>
+          </div>
         </section>
       )}
 

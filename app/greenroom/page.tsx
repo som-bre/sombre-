@@ -11,11 +11,26 @@ import {
 } from '@/lib/greenroom'
 import { Icon, SketchButton, Coins, Gold, GOLD, PINK, LOW, type IconName } from '@/components/greenroom/ui'
 import { HuntPanel, LifePanel, ForgePanel, BagPanel, ShopPanel, CodexPanel } from '@/components/greenroom/RpgPanels'
-import { ITEMS, isFail, tidy, josa, doEat, jobLabel, type Fail } from '@/lib/greenroomRpg'
-import { dayKey, itemsFor, tidyTodos, splitArchive } from '@/lib/greenroomTodo'
+import { ITEMS, BREWS, SEEDS, isFail, tidy, josa, doEat, jobLabel, plotCount, type Fail } from '@/lib/greenroomRpg'
+import { dayKey, itemsFor, overdue, tidyTodos, splitArchive } from '@/lib/greenroomTodo'
 import { TodoPanel } from '@/components/greenroom/TodoPanel'
+import { MailPanel, GiftModal, type MailApi } from '@/components/greenroom/Mail'
+import {
+  other, newLetter, packGift, unpackGift, hasGift, giftWaiting, addToBox, sanitizeMail, sanitizeLetter, MAX_MAIL, type Letter,
+} from '@/lib/greenroomMail'
 
 const LS_KEY = 'sombre_greenroom_v1'
+
+// Mailboxes when there is no server (local play): { dylan: Letter[], manon: Letter[] }
+const MAIL_KEY = 'sombre_greenroom_mail_v1'
+const readMail = (): Record<string, unknown> => {
+  try { return JSON.parse(localStorage.getItem(MAIL_KEY) || '{}') || {} } catch { return {} }
+}
+const writeMail = (all: Record<string, unknown>) => { try { localStorage.setItem(MAIL_KEY, JSON.stringify(all)) } catch {} }
+const mailCall = async (method: 'POST' | 'PATCH', body: unknown) => {
+  const res = await fetch('/api/greenroom/mail', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  return res.json()
+}
 
 // Monthly archive of old finished to-dos, kept beside the main save: { 'manon:2026-08': Todo[] }
 const ARCH_KEY = 'sombre_greenroom_arch_v1'
@@ -49,7 +64,7 @@ const TOYS: { id: string; label: string; icon: IconName; cost: number; mood: num
 ]
 
 type Sync = 'loading' | 'synced' | 'saving' | 'local' | 'relogin'
-type Tab = 'todo' | 'shop' | 'hunt' | 'life' | 'forge' | 'bag' | 'dex'
+type Tab = 'todo' | 'shop' | 'hunt' | 'life' | 'forge' | 'bag' | 'mail' | 'dex'
 const TABS: { id: Tab; label: string; en: string; title: string; icon: IconName }[] = [
   { id: 'todo', label: '할 일', en: 'CUE SHEET', title: '할 일', icon: 'list' },
   { id: 'shop', label: '상점', en: 'STARLIGHT SHOP', title: '별빛 상점', icon: 'coin' },
@@ -57,6 +72,7 @@ const TABS: { id: Tab; label: string; en: string; title: string; icon: IconName 
   { id: 'life', label: '생활', en: 'THE GROUNDS', title: '생활', icon: 'leaf' },
   { id: 'forge', label: '공방', en: 'WORKSHOP', title: '공방', icon: 'hammer' },
   { id: 'bag', label: '가방', en: 'TRUNK', title: '가방', icon: 'bag' },
+  { id: 'mail', label: '우편', en: 'POST', title: '우편함', icon: 'mail' },
   { id: 'dex', label: '도감', en: 'BESTIARY', title: '도감', icon: 'book' },
 ]
 interface Fx { id: number; who: Who; kind: 'float' | 'eat'; text?: string; icon?: IconName }
@@ -65,10 +81,20 @@ interface Bubble { id: number; x: number; y: number; r: number }
 const clamp = (n: number) => Math.max(0, Math.min(100, n))
 
 const CSS = `
-.gr-root { --sprite: 174px; }
-@media (min-width: 1024px) and (min-height: 800px) { .gr-root { --sprite: 261px; } }
+.gr-root { --sprite: 150px; --gut: 14px; }
+@media (min-width: 640px) { .gr-root { --sprite: 186px; --gut: 9%; } }
+@media (min-width: 1024px) { .gr-root { --sprite: 196px; } }
+@media (min-width: 1024px) and (min-height: 820px) { .gr-root { --sprite: 232px; } }
 .gr-sprite { width: var(--sprite); height: var(--sprite); }
-.gr-stage { height: calc(var(--sprite) + 108px); }
+.gr-stage { height: calc(var(--sprite) + 62px); }
+.gr-dock { position: sticky; top: 0; z-index: 6; background: #000; }
+@media (min-width: 1024px) { .gr-dock { position: static; background: transparent; } }
+/* boxes keep the hand-drawn wobble of their lines but no longer shift position */
+.gr-root .sketch-jitter-line, .gr-modal .sketch-jitter-line { animation: none; }
+.gr-now-row { transition: background 0.2s; }
+.gr-now-row:hover { background: rgba(255,255,255,0.04); }
+@keyframes grToast { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.gr-toast { animation: grToast 0.2s ease-out; }
 .gr-px { image-rendering: crisp-edges; image-rendering: pixelated; }
 
 @keyframes grBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
@@ -364,6 +390,7 @@ export default function GreenroomPage() {
   const [fx, setFx] = useState<Fx[]>([])
   const [hops, setHops] = useState<Record<Who, number>>({ dylan: 0, manon: 0 })
   const [notice, setNotice] = useState<{ text: string; id: number } | null>(null)
+  const panelRef = useRef<HTMLElement>(null)
   const [coinPulse, setCoinPulse] = useState(0)
   const [showLogin, setShowLogin] = useState(false)
   const [tab, setTab] = useState<Tab>('todo')
@@ -466,6 +493,29 @@ export default function GreenroomPage() {
     pushTimers.current[who] = setTimeout(() => { pushTimers.current[who] = undefined; push(who) }, 500)
   }, [push])
 
+  // ── mail ──
+  const [mail, setMail] = useState<Record<Who, Letter[]>>({ dylan: [], manon: [] })
+  const [compose, setCompose] = useState<{ item?: string } | null>(null)
+  const [mailBusy, setMailBusy] = useState(false)
+  const loadMail = useCallback(async () => {
+    if (localStorage.getItem('same_admin_login') !== 'true') return
+    if (!serverOn.current) {
+      const all = readMail()
+      setMail({ dylan: sanitizeMail(all.dylan), manon: sanitizeMail(all.manon) })
+      return
+    }
+    try {
+      const res = await Promise.all(WHOS.map(w => fetch(`/api/greenroom/mail?who=${w}`, { cache: 'no-store' }).then(r => r.json())))
+      if (res.every(r => r?.ok)) setMail({ dylan: sanitizeMail(res[0].letters), manon: sanitizeMail(res[1].letters) })
+    } catch {}
+  }, [])
+  useEffect(() => {
+    if (!authed || (sync !== 'synced' && sync !== 'local')) return
+    loadMail()
+    const t = setInterval(() => { if (document.visibilityState === 'visible') loadMail() }, 60000)
+    return () => clearInterval(t)
+  }, [authed, sync, loadMail])
+
   // ── archive: old finished to-dos move out of the main save, but are never thrown away ──
   const storeArchive = useCallback(async (who: Who, months: Record<string, Todo[]>): Promise<boolean> => {
     try {
@@ -566,6 +616,78 @@ export default function GreenroomPage() {
     return r
   }
   const celebrate = (text: string) => { hop(sel); addFx({ who: sel, kind: 'float', text }) }
+
+  // ── mail: a gift leaves the sender's bag first, and comes back if delivery fails ──
+  const them = other(sel)
+  const sendLetter = async (text: string, items: Record<string, number>, gold: number): Promise<boolean> => {
+    const letter = newLetter(sel, text, items, gold)
+    if (!apply(p => packGift(p, items, gold, text))) return false
+    try {
+      if (serverOn.current) {
+        const d = await mailCall('POST', { letter })
+        if (!d?.ok) throw new Error(d?.error)
+      } else {
+        const all = readMail()
+        all[letter.to] = addToBox(sanitizeMail(all[letter.to]), letter)
+        writeMail(all)
+      }
+      setMail(m => ({ ...m, [letter.to]: addToBox(m[letter.to], letter) }))
+      hop(letter.from)
+      addFx({ who: letter.from, kind: 'float', text: '✉' })
+      return true
+    } catch {
+      if (hasGift(letter)) commit(letter.from, unpackGift(cur(letter.from), items, gold).pet)
+      flash('보내지 못했어요. 선물은 돌려놨어요.')
+      return false
+    }
+  }
+  const claimLetter = async (id: string) => {
+    if (!canEdit) return needLogin()
+    const who = sel
+    setMailBusy(true)
+    try {
+      let letter: Letter | null = null
+      if (serverOn.current) {
+        const d = await mailCall('PATCH', { who, id, op: 'claim' })
+        if (!d?.ok) { flash(d?.error || '받지 못했어요.'); loadMail(); return }
+        letter = sanitizeLetter(d.letter)
+      } else {
+        const all = readMail()
+        const box = sanitizeMail(all[who])
+        const found = box.find(l => l.id === id)
+        if (!found || !giftWaiting(found)) { flash('이미 받은 선물이에요.'); return }
+        letter = { ...found, claimed: true, read: true }
+        all[who] = box.map(l => (l.id === id ? letter! : l))
+        writeMail(all)
+      }
+      if (!letter) return
+      commit(who, tidy(unpackGift(cur(who), letter.items, letter.gold).pet))
+      const done = letter
+      setMail(m => ({ ...m, [who]: m[who].map(l => (l.id === id ? done : l)) }))
+      hop(who)
+      addFx({ who, kind: 'float', text: '선물!' })
+    } catch {
+      flash('받지 못했어요.')
+    } finally {
+      setMailBusy(false)
+    }
+  }
+  const touchLetter = (op: 'read' | 'delete', id: string) => {
+    const who = sel
+    setMail(m => ({ ...m, [who]: op === 'read' ? m[who].map(l => (l.id === id ? { ...l, read: true } : l)) : m[who].filter(l => l.id !== id) }))
+    if (serverOn.current) { mailCall('PATCH', { who, id, op }).catch(() => {}); return }
+    const all = readMail()
+    const box = sanitizeMail(all[who])
+    all[who] = op === 'read' ? box.map(l => (l.id === id ? { ...l, read: true } : l)) : box.filter(l => l.id !== id || giftWaiting(l))
+    writeMail(all)
+  }
+  const mailApi: MailApi = {
+    me: cast.name, them: CAST[them].name, themAccent: CAST[them].accent,
+    inbox: mail[sel], sent: mail[them].filter(l => l.from === sel).slice(0, MAX_MAIL),
+    unread: mail[sel].filter(l => !l.read).length, busy: mailBusy,
+    compose: item => (canEdit ? setCompose({ item }) : needLogin()),
+    claim: claimLetter, read: id => touchLetter('read', id), remove: id => touchLetter('delete', id), refresh: loadMail,
+  }
 
   // ── washing ──
   const endWash = () => {
@@ -686,9 +808,33 @@ export default function GreenroomPage() {
   }
 
   const tabDef = TABS.find(t => t.id === tab) ?? TABS[0]
+  const lateCount = overdue(me, dayKey(now || Date.now())).length
+  const goTab = (t: Tab) => {
+    setTab(t)
+    if (window.matchMedia('(max-width: 1023px)').matches) panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  const short = (ms: number) => {
+    const m = Math.ceil(ms / 60000)
+    return m >= 60 ? `${Math.floor(m / 60)}시간${m % 60 ? ` ${m % 60}분` : ''}` : `${Math.max(1, m)}분`
+  }
   const todayKey = dayKey(now || Date.now())
   const pendingToday = itemsFor(me, todayKey, todayKey).filter(t => !t.done).length
   const act = Math.floor(me.doneCount / 5) + 1
+  const clock = now || Date.now()
+  const plots = Array.from({ length: plotCount(me.rpg) }, (_, i) => me.rpg.plots[i] ?? null)
+  const ripe = plots.filter(p => p && p.readyAt <= clock).length
+  const growing = plots.filter(p => p && p.readyAt > clock)
+  const nextCrop = growing.length ? Math.min(...growing.map(p => p!.readyAt)) : 0
+  const nowRows = ([
+    { key: 'todo', label: '오늘 할 일', value: pendingToday ? `${pendingToday}개 남음` : '모두 끝냄', tone: pendingToday ? undefined : cast.accent, tab: 'todo' },
+    lateCount > 0 && { key: 'late', label: '밀린 일', value: `${lateCount}개`, tone: LOW, tab: 'todo' },
+    mailApi.unread > 0 && { key: 'mail', label: '우편', value: `새 편지 ${mailApi.unread}`, tone: PINK, tab: 'mail' },
+    me.rpg.job && { key: 'job', label: jobLabel(me.rpg.job), value: me.rpg.job.endsAt <= clock ? '돌아옴' : short(me.rpg.job.endsAt - clock), tone: me.rpg.job.endsAt <= clock ? GOLD : undefined, tab: 'life' },
+    (ripe > 0 || growing.length > 0) && { key: 'farm', label: '텃밭', value: ripe ? `수확 ${ripe}칸` : `${growing.length}칸 · ${short(nextCrop - clock)}`, tone: ripe ? GOLD : undefined, tab: 'life' },
+    me.rpg.brew && { key: 'brew', label: `가마솥 · ${ITEMS[BREWS[me.rpg.brew.id]?.out ?? '']?.name ?? ''}`, value: me.rpg.brew.readyAt <= clock ? '완성' : short(me.rpg.brew.readyAt - clock), tone: me.rpg.brew.readyAt <= clock ? GOLD : undefined, tab: 'forge' },
+    me.rpg.meal && { key: 'meal', label: ITEMS[me.rpg.meal.id]?.name ?? '식사', value: `결투 ${me.rpg.meal.left}회`, tone: GOLD, tab: 'hunt' },
+    me.rpg.boon > 0 && { key: 'boon', label: '별의 가호', value: `결투 ${me.rpg.boon}회`, tone: GOLD, tab: 'hunt' },
+  ] as const).filter(Boolean) as { key: string; label: string; value: string; tone?: string; tab: Tab }[]
   const washing = wash?.who === sel
   const lightsOn = !me.asleep
 
@@ -704,18 +850,24 @@ export default function GreenroomPage() {
   return (
     <div className="gr-root fixed inset-0 z-[60] bg-black overflow-hidden text-white">
       <style>{CSS}</style>
-      <EdgeCurtain side="left" />
-      <EdgeCurtain side="right" />
+      {compose && (
+        <GiftModal pet={me} from={cast.name} to={CAST[them].name} toAccent={CAST[them].accent} start={compose.item}
+          onSend={sendLetter} onClose={() => setCompose(null)} />
+      )}
+      <div className="hidden sm:block">
+        <EdgeCurtain side="left" />
+        <EdgeCurtain side="right" />
+      </div>
 
       {/* Frame line */}
-      <div className="fixed pointer-events-none z-[3] sketch-jitter-line" style={{
+      <div className="fixed pointer-events-none z-[3] sketch-jitter-line hidden sm:block" style={{
         top: 'clamp(28px, 3vw, 48px)', left: '7%', right: '7%', height: '1px',
         background: 'rgba(255,255,255,0.1)', filter: 'url(#sketchy)',
       }} />
 
       {/* Top bar */}
       <div className={`fixed top-0 left-0 right-0 z-[10] flex items-center justify-between ${mounted ? 'animate-fade-slide-up' : 'opacity-0'}`}
-        style={{ padding: 'clamp(28px, 3vw, 44px) clamp(40px, 9vw, 100px) 0' }}>
+        style={{ padding: 'clamp(16px, 3vw, 44px) max(var(--gut), clamp(16px, 9vw, 100px)) 10px', background: 'linear-gradient(to bottom, #000 70%, transparent)' }}>
         <button onClick={() => router.push('/')}
           className="label-caps text-white/40 hover:text-white/80 transition-colors cursor-pointer"
           style={{ fontSize: '0.55rem', letterSpacing: '0.25em' }}>
@@ -740,9 +892,9 @@ export default function GreenroomPage() {
 
       {/* Main */}
       <div className="absolute inset-0 flex flex-col overflow-y-auto lg:overflow-hidden" style={{
-        paddingTop: 'clamp(64px, 6.5vw, 92px)',
+        paddingTop: 'clamp(46px, 6.5vw, 92px)',
         paddingBottom: 56,
-        paddingLeft: '9%', paddingRight: '9%',
+        paddingLeft: 'var(--gut)', paddingRight: 'var(--gut)',
       }}>
         {/* Header */}
         <div className={`flex items-center justify-center gap-3 mb-4 shrink-0 ${mounted ? 'animate-fade-slide-up stagger-1' : 'opacity-0'}`}>
@@ -753,12 +905,41 @@ export default function GreenroomPage() {
           <span className="block h-px sketch-jitter-line" style={{ width: 'clamp(24px, 6vw, 80px)', background: 'rgba(255,255,255,0.2)', filter: 'url(#sketchy)' }} />
         </div>
 
-        <div className={`grid grid-cols-1 lg:grid-cols-[minmax(0,1.150fr)_minmax(0,0.850fr)] gap-6 lg:gap-8 lg:flex-1 lg:min-h-0 ${mounted ? 'animate-fade-slide-up stagger-2' : 'opacity-0'}`}>
+        <div className={`grid grid-cols-1 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-6 lg:gap-10 lg:flex-1 lg:min-h-0 ${mounted ? 'animate-fade-slide-up stagger-2' : 'opacity-0'}`}>
 
           {/* ═════ Left: the room ═════ */}
-          <section className="flex flex-col gap-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1" aria-label="분장실">
+          <section className="flex flex-col gap-4 lg:min-h-0 lg:overflow-y-auto lg:pr-2" aria-label="분장실">
+            {/* purse and progress */}
+            <div className="flex items-start justify-between gap-3 shrink-0">
+              <div className="flex items-end gap-4">
+              <span className="flex items-center gap-[6px]" style={{ color: cast.accent }} title="별빛 — 할 일을 끝내면 받아요">
+                <span key={coinPulse} className={coinPulse ? 'gr-coin-pulse inline-flex' : 'inline-flex'}><Icon name="coin" size={17} /></span>
+                <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.45rem', fontWeight: 700, lineHeight: 1 }} aria-label={`${cast.name}의 별빛`}>{me.coins}</span>
+                <span className="label-caps" style={{ fontSize: '0.46rem', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)' }}>별빛</span>
+              </span>
+              <span className="flex items-center gap-[5px]" style={{ color: GOLD }} title="금화 — 탐험과 판매로 벌어요">
+                <Icon name="gold" size={14} />
+                <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', fontWeight: 700, lineHeight: 1 }} aria-label={`${cast.name}의 금화`}>{me.gold}</span>
+                <span className="label-caps" style={{ fontSize: '0.46rem', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)' }}>금화</span>
+              </span>
+            </div>
+            <div className="text-right">
+              <div style={{ fontFamily: "'Playfair Display', serif", fontStyle: 'italic', fontSize: '0.95rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.1 }}>
+                Lv.{me.rpg.lv} <span style={{ color: 'rgba(255,255,255,0.35)' }}>·</span> Act {act}
+              </div>
+              <div className="flex gap-[3px] justify-end mt-1" title={`다음 막까지 ${5 - (me.doneCount % 5)}개`}>
+                {[0, 1, 2, 3, 4].map(i => (
+                  <span key={i} style={{
+                    width: 6, height: 6, border: '1px solid rgba(255,255,255,0.4)',
+                    background: i < me.doneCount % 5 ? cast.accent : 'transparent',
+                  }} />
+                ))}
+              </div>
+            </div>
+            </div>
+
             {/* Stage */}
-            <div className="gr-stage relative shrink-0 overflow-hidden">
+            <div className="gr-stage relative shrink-0 overflow-hidden" style={{ marginTop: -6 }}>
               {/* floor */}
               <svg className="absolute inset-0 w-full h-full sketch-jitter-line pointer-events-none" viewBox="0 0 100 100"
                 preserveAspectRatio="none" style={{ filter: 'url(#sketchy)' }} aria-hidden>
@@ -786,33 +967,6 @@ export default function GreenroomPage() {
                 opacity: lightsOn ? 1 : 0.2,
               }} />
 
-              {/* purse: starlight from to-dos, gold from adventuring */}
-              <div className="absolute left-0 top-0 flex items-end gap-4">
-                <span className="flex items-center gap-[6px]" style={{ color: cast.accent }} title="별빛 — 할 일을 끝내면 받아요">
-                  <span key={coinPulse} className={coinPulse ? 'gr-coin-pulse inline-flex' : 'inline-flex'}><Icon name="coin" size={17} /></span>
-                  <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.45rem', fontWeight: 700, lineHeight: 1 }} aria-label={`${cast.name}의 별빛`}>{me.coins}</span>
-                  <span className="label-caps" style={{ fontSize: '0.46rem', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)' }}>별빛</span>
-                </span>
-                <span className="flex items-center gap-[5px]" style={{ color: GOLD }} title="금화 — 탐험과 판매로 벌어요">
-                  <Icon name="gold" size={14} />
-                  <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', fontWeight: 700, lineHeight: 1 }} aria-label={`${cast.name}의 금화`}>{me.gold}</span>
-                  <span className="label-caps" style={{ fontSize: '0.46rem', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)' }}>금화</span>
-                </span>
-              </div>
-              <div className="absolute right-0 top-0 text-right">
-                <div style={{ fontFamily: "'Playfair Display', serif", fontStyle: 'italic', fontSize: '0.95rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.1 }}>
-                  Lv.{me.rpg.lv} <span style={{ color: 'rgba(255,255,255,0.35)' }}>·</span> Act {act}
-                </div>
-                <div className="flex gap-[3px] justify-end mt-1" title={`다음 막까지 ${5 - (me.doneCount % 5)}개`}>
-                  {[0, 1, 2, 3, 4].map(i => (
-                    <span key={i} style={{
-                      width: 6, height: 6, border: '1px solid rgba(255,255,255,0.4)',
-                      background: i < me.doneCount % 5 ? cast.accent : 'transparent',
-                    }} />
-                  ))}
-                </div>
-              </div>
-
               {WHOS.map(w => (
                 <Character key={w} who={w} pet={view(w)} selected={w === sel}
                   washing={wash?.who === w}
@@ -834,25 +988,26 @@ export default function GreenroomPage() {
 
             {/* Actions */}
             <div className="grid grid-cols-4 gap-2 sm:gap-3 shrink-0" style={{ fontFamily: "'Noto Serif KR', serif", fontSize: '0.8rem' }}>
-              <SketchButton on={panel === 'feed'} disabled={washing} style={{ padding: '10px 4px' }}
-                onClick={() => setPanel(p => p === 'feed' ? null : 'feed')}>
-                <Icon name="soup" /><span>먹이기</span>
-              </SketchButton>
-              <SketchButton on={washing} style={{ padding: '10px 4px' }}
-                onClick={() => washing ? endWash() : startWash()}>
-                <Icon name="soap" /><span>{washing ? '헹구기' : '씻기기'}</span>
-              </SketchButton>
-              <SketchButton on={panel === 'play'} disabled={washing} style={{ padding: '10px 4px' }}
-                onClick={() => setPanel(p => p === 'play' ? null : 'play')}>
-                <Icon name="note" /><span>놀아주기</span>
-              </SketchButton>
-              <SketchButton on={me.asleep} style={{ padding: '10px 4px' }} onClick={toggleSleep}>
-                <Icon name={me.asleep ? 'sun' : 'moon'} /><span>{me.asleep ? '깨우기' : '재우기'}</span>
-              </SketchButton>
+              {([
+                { on: panel === 'feed', off: washing, icon: 'soup', label: '먹이기', act: () => setPanel(p => p === 'feed' ? null : 'feed') },
+                { on: washing, off: false, icon: 'soap', label: washing ? '헹구기' : '씻기기', cost: washing ? 0 : WASH_COST, act: () => washing ? endWash() : startWash() },
+                { on: panel === 'play', off: washing, icon: 'note', label: '놀아주기', act: () => setPanel(p => p === 'play' ? null : 'play') },
+                { on: me.asleep, off: false, icon: me.asleep ? 'sun' : 'moon', label: me.asleep ? '깨우기' : '재우기', act: toggleSleep },
+              ] as { on: boolean; off: boolean; icon: IconName; label: string; cost?: number; act: () => void }[]).map(b => (
+                <SketchButton key={b.label} on={b.on} disabled={b.off} onClick={b.act} style={{ padding: '9px 2px', minHeight: 50 }}>
+                  <span className="flex flex-col sm:flex-row items-center gap-[3px] sm:gap-2 whitespace-nowrap">
+                    <Icon name={b.icon} />
+                    <span className="flex flex-col items-center leading-tight">
+                      <span style={{ fontSize: 'clamp(0.7rem, 2.6vw, 0.8rem)' }}>{b.label}</span>
+                      {!!b.cost && <Gold n={b.cost} size="0.6rem" />}
+                    </span>
+                  </span>
+                </SketchButton>
+              ))}
             </div>
 
             {/* Tray */}
-            <div className="shrink-0" style={{ minHeight: 84 }}>
+            <div className="shrink-0" style={{ display: washing || panel ? 'block' : 'none' }}>
               {washing && wash ? (
                 <div>
                   <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontFamily: "'Gowun Batang', serif" }}>
@@ -898,20 +1053,30 @@ export default function GreenroomPage() {
                   ))}
                 </div>
               ) : null}
-              <p aria-live="polite" className="mt-2" style={{
-                fontSize: '0.76rem', lineHeight: 1.6, fontFamily: "'Gowun Batang', 'Noto Serif KR', serif",
-                color: notice ? PINK : 'rgba(255,255,255,0.4)', transition: 'color 0.2s',
-              }}>
-                {notice?.text}
-                {!notice && !washing && !panel && canEdit && !me.asleep && (
-                  <span className="inline-block whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.3)' }}>씻기기 <Gold n={WASH_COST} size="0.7rem" /></span>
-                )}
-              </p>
             </div>
+
+            {/* now: what is waiting, at a glance */}
+            {authed && sync !== 'relogin' && nowRows.length > 0 && (
+              <div className="relative shrink-0" style={{ padding: '12px 14px 8px' }}>
+                <span className="absolute inset-0 pointer-events-none sketch-jitter-line" style={{ border: '1px solid rgba(255,255,255,0.1)', filter: 'url(#sketchy)' }} />
+                <p className="label-caps relative" style={{ fontSize: '0.5rem', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>NOW</p>
+                <ul className="relative">
+                  {nowRows.map(r => (
+                    <li key={r.key}>
+                      <button onClick={() => goTab(r.tab)} className="gr-now-row w-full flex items-baseline gap-2 cursor-pointer text-left" style={{ background: 'none', padding: '5px 4px' }}>
+                        <span className="shrink-0" style={{ fontSize: '0.8rem', fontFamily: "'Noto Serif KR', serif", color: 'rgba(255,255,255,0.75)' }}>{r.label}</span>
+                        <span className="flex-1 border-b border-dotted" style={{ borderColor: 'rgba(255,255,255,0.15)', transform: 'translateY(-3px)' }} />
+                        <span className="shrink-0" style={{ fontSize: '0.8rem', fontFamily: "'Playfair Display', 'Noto Serif KR', serif", fontStyle: 'italic', color: r.tone ?? 'rgba(255,255,255,0.85)' }}>{r.value}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
 
           {/* ═════ Right: cue sheet (to-do) ═════ */}
-          <section className="relative flex flex-col lg:min-h-0" aria-label="할 일과 모험" style={{ padding: '18px 20px 14px' }}>
+          <section ref={panelRef} className="relative flex flex-col lg:min-h-0 px-3 sm:px-5" aria-label="할 일과 모험" style={{ paddingTop: 16, paddingBottom: 14, scrollMarginTop: 40 }}>
             <span className="absolute inset-0 pointer-events-none sketch-jitter-line" style={{
               border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.02)', filter: 'url(#sketchy)',
             }} />
@@ -924,45 +1089,52 @@ export default function GreenroomPage() {
                   <span style={{ color: cast.accent }}>{cast.name}</span>의 {tabDef.title}
                 </h2>
               </div>
-              {authed && <div className="flex gap-3" role="tablist" aria-label="캐릭터 선택">
+              {authed && <div className="flex" role="tablist" aria-label="캐릭터 선택" style={{ border: '1px solid rgba(255,255,255,0.14)' }}>
                 {WHOS.map(w => (
                   <button key={w} role="tab" aria-selected={w === sel} onClick={() => select(w)}
                     className="relative cursor-pointer" style={{
-                      background: 'none', fontFamily: "'Playfair Display', serif", fontStyle: 'italic', fontSize: '0.82rem',
-                      color: w === sel ? CAST[w].accent : 'rgba(255,255,255,0.3)', transition: 'color 0.3s', padding: '2px 0',
+                      background: w === sel ? 'rgba(255,255,255,0.07)' : 'none', fontFamily: "'Playfair Display', serif", fontStyle: 'italic', fontSize: '0.86rem',
+                      color: w === sel ? CAST[w].accent : 'rgba(255,255,255,0.35)', transition: 'color 0.3s, background 0.3s', padding: '4px 12px',
                     }}>
                     {CAST[w].name}
-                    {w === sel && <span className="absolute left-0 right-0 sketch-jitter-line" style={{ bottom: 0, height: 1, background: CAST[w].accent, filter: 'url(#sketchy)' }} />}
+                    {w !== sel && mail[w].some(l => !l.read) && <span aria-label="새 편지" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 5, background: PINK, marginLeft: 3, verticalAlign: 'super' }} />}
+                    {w === sel && <span className="absolute left-2 right-2 sketch-jitter-line" style={{ bottom: 2, height: 1, background: CAST[w].accent, filter: 'url(#sketchy)' }} />}
                   </button>
                 ))}
               </div>}
             </div>
 
             {authed && sync !== 'relogin' && (
-              <div className="relative grid grid-cols-4 sm:grid-cols-7 gap-[6px] mb-3 shrink-0" role="tablist" aria-label="메뉴"
-                style={{ fontFamily: "'Noto Serif KR', serif", fontSize: '0.74rem' }}>
+              <div className="gr-dock relative grid grid-cols-8 gap-[4px] sm:gap-[6px] mb-3 shrink-0 -mx-1 px-1 py-1" role="tablist" aria-label="메뉴"
+                style={{ fontFamily: "'Noto Serif KR', serif" }}>
                 {TABS.map(t => (
-                  <SketchButton key={t.id} on={tab === t.id} onClick={() => setTab(t.id)} style={{ padding: '7px 2px' }}>
-                    <span className="hidden xl:inline-flex"><Icon name={t.icon} size={13} /></span>
-                    <span>{t.label}</span>
+                  <SketchButton key={t.id} on={tab === t.id} onClick={() => setTab(t.id)} style={{ padding: '6px 0 5px' }}>
+                    <span className="flex flex-col items-center gap-[2px] whitespace-nowrap">
+                      <Icon name={t.icon} size={15} />
+                      <span style={{ fontSize: 'clamp(0.6rem, 2.4vw, 0.72rem)', letterSpacing: '-0.02em' }}>{t.label}</span>
+                    </span>
+                    {t.id === 'mail' && mailApi.unread > 0 && (
+                      <span className="absolute flex items-center justify-center" style={{
+                        top: -5, right: -4, minWidth: 15, height: 15, borderRadius: 15, padding: '0 3px',
+                        background: PINK, color: '#000', fontSize: '0.58rem', fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 700,
+                      }}>{mailApi.unread}</span>
+                    )}
+                    {t.id === 'todo' && lateCount > 0 && tab !== 'todo' && (
+                      <span className="absolute" style={{ top: 3, right: 4, width: 5, height: 5, borderRadius: 5, background: LOW }} />
+                    )}
                   </SketchButton>
                 ))}
               </div>
-            )}
-            {notice && (
-              <p aria-live="polite" className="relative shrink-0 mb-2" style={{ fontSize: '0.76rem', color: PINK, fontFamily: "'Gowun Batang', 'Noto Serif KR', serif" }}>
-                {notice.text}
-              </p>
             )}
 
             {authed && sync !== 'relogin' && (
               <div key={sel} className="relative flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-2" style={{ minHeight: 220 }}>
                 {([
-                  ['todo', TodoPanel], ['shop', ShopPanel], ['hunt', HuntPanel], ['life', LifePanel], ['forge', ForgePanel], ['bag', BagPanel], ['dex', CodexPanel],
+                  ['todo', TodoPanel], ['shop', ShopPanel], ['hunt', HuntPanel], ['life', LifePanel], ['forge', ForgePanel], ['bag', BagPanel], ['mail', MailPanel], ['dex', CodexPanel],
                 ] as const).map(([id, Panel]) => (
                   <div key={id} hidden={tab !== id}>
                     <Panel pet={me} name={cast.name} accent={cast.accent} apply={apply} notify={flash} celebrate={celebrate} onCoins={() => setCoinPulse(n => n + 1)}
-                      ready={canEdit} archive={month => loadArchive(sel, month)} />
+                      ready={canEdit} archive={month => loadArchive(sel, month)} mail={mailApi} />
                   </div>
                 ))}
               </div>
@@ -985,6 +1157,17 @@ export default function GreenroomPage() {
             ) : null}
           </section>
         </div>
+      </div>
+
+      {/* notices */}
+      <div aria-live="polite" className="fixed z-[70] pointer-events-none" style={{ left: '50%', bottom: 44 }}>
+        {notice && (
+          <p key={notice.id} className="gr-toast relative" style={{
+            transform: 'translateX(-50%)', width: 'max-content', maxWidth: 'calc(100vw - 32px)', textAlign: 'center', wordBreak: 'keep-all',
+            padding: '8px 16px', background: '#000', color: PINK, fontSize: '0.82rem', fontFamily: "'Gowun Batang', 'Noto Serif KR', serif",
+            border: `1px solid ${PINK}80`, boxShadow: '0 4px 24px rgba(0,0,0,0.8)',
+          }}>{notice.text}</p>
+        )}
       </div>
 
       {/* Footer */}

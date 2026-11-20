@@ -5,7 +5,7 @@
 export const PINK = '#FF6B9D'
 export const LOW = '#C2325B'
 
-export type IconName = 'coin' | 'bread' | 'soup' | 'cake' | 'tea' | 'musicbox' | 'bouquet' | 'soap' | 'moon' | 'sun' | 'note' | 'sword' | 'leaf' | 'fish' | 'hammer' | 'bag' | 'list' | 'gold' | 'book'
+export type IconName = 'coin' | 'bread' | 'soup' | 'cake' | 'tea' | 'musicbox' | 'bouquet' | 'soap' | 'moon' | 'sun' | 'note' | 'sword' | 'leaf' | 'fish' | 'hammer' | 'bag' | 'list' | 'gold' | 'book' | 'mail'
 
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const s = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -64,6 +64,9 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
       break
     case 'book':
       body = <><path {...s} d="M4 5.5c3-1 5.5-1 8 1 2.5-2 5-2 8-1v13c-3-1-5.5-1-8 1-2.5-2-5-2-8-1z" /><path {...s} d="M12 6.5v13" /></>
+      break
+    case 'mail':
+      body = <><rect {...s} x="3.5" y="6" width="17" height="12" rx="1" /><path {...s} d="M3.5 7l8.5 6.5L20.5 7" /></>
       break
     case 'note':
       body = <><path {...s} d="M9 17.5V6.5l9-2v11" /><circle {...s} cx="6.8" cy="17.5" r="2.2" /><circle {...s} cx="15.8" cy="15.5" r="2.2" /></>

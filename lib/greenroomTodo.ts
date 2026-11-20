@@ -62,7 +62,7 @@ export function itemsFor(p: Pet, day: string, today: string): Todo[] {
     for (const r of p.routines) {
       if (day < r.from || !r.days.includes(weekday)) continue
       if (p.todos.some(t => t.routine === r.id && t.date === day)) continue
-      out.push({ id: `${VIRTUAL}${r.id}:${day}`, text: r.text, tier: r.tier, cat: r.cat, time: r.time, done: false, createdAt: 0, date: day, routine: r.id })
+      out.push({ id: `${VIRTUAL}${r.id}:${day}`, text: r.text, tier: r.tier, cat: r.cat, time: r.time, memo: r.memo, done: false, createdAt: 0, date: day, routine: r.id })
     }
   }
   return out.sort((a, b) =>
@@ -123,6 +123,7 @@ function materialise(p: Pet, id: string): { pet: Pet; id: string } | null {
   const todo: Todo = { id: newId(), text: routine.text, tier: routine.tier, done: false, createdAt: Date.now(), date: day, routine: routine.id }
   if (routine.cat) todo.cat = routine.cat
   if (routine.time) todo.time = routine.time
+  if (routine.memo) todo.memo = routine.memo
   return { pet: { ...p, todos: [...p.todos, todo] }, id: todo.id }
 }
 
@@ -145,7 +146,7 @@ export function splitArchive(p: Pet, today: string): { pet: Pet; months: Record<
   return { pet: { ...p, todos, hist }, months }
 }
 
-export interface NewTodo { text: string; tier: number; date: string; cat?: string; time?: string }
+export interface NewTodo { text: string; tier: number; date: string; cat?: string; time?: string; memo?: string }
 
 export function addTodo(p: Pet, input: NewTodo): Fail | { pet: Pet } {
   const text = input.text.trim().slice(0, MAX_TEXT)
@@ -154,6 +155,7 @@ export function addTodo(p: Pet, input: NewTodo): Fail | { pet: Pet } {
   const todo: Todo = { id: newId(), text, tier: input.tier, done: false, createdAt: Date.now(), date: input.date }
   if (input.cat) todo.cat = input.cat
   if (input.time) todo.time = input.time
+  if (input.memo?.trim()) todo.memo = input.memo.trim().slice(0, MAX_MEMO)
   return { pet: { ...p, todos: [...p.todos, todo] } }
 }
 
@@ -263,16 +265,17 @@ export function setAutoCarry(p: Pet, on: boolean): Fail | { pet: Pet } {
 
 // ── routines ──
 
-export interface NewRoutine { text: string; tier: number; days: number[]; cat?: string; time?: string }
+export interface NewRoutine { text: string; tier: number; days: number[]; cat?: string; time?: string; memo?: string }
 
-export function addRoutine(p: Pet, input: NewRoutine, today: string): Fail | { pet: Pet } {
+export function addRoutine(p: Pet, input: NewRoutine, from: string): Fail | { pet: Pet } {
   const text = input.text.trim().slice(0, MAX_TEXT)
   if (!text) return '루틴 이름을 적어주세요.'
   if (!input.days.length) return '반복할 요일을 하나 이상 골라주세요.'
   if (p.routines.length >= MAX_ROUTINES) return '루틴이 너무 많아요.'
-  const routine: Routine = { id: newId(), text, tier: input.tier, days: [...input.days].sort(), from: today }
+  const routine: Routine = { id: newId(), text, tier: input.tier, days: [...input.days].sort(), from }
   if (input.cat) routine.cat = input.cat
   if (input.time) routine.time = input.time
+  if (input.memo?.trim()) routine.memo = input.memo.trim().slice(0, MAX_MEMO)
   return { pet: { ...p, routines: [...p.routines, routine] } }
 }
 

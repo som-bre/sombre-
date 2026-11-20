@@ -14,6 +14,7 @@ import {
 } from '@/lib/greenroomRpg'
 import { SketchButton, Coins, Gold, GOLD, PINK, LOW } from './ui'
 import MonsterArt from './MonsterArt'
+import type { MailApi } from './Mail'
 
 export interface PanelProps {
   pet: Pet // already settled to "now"
@@ -26,6 +27,7 @@ export interface PanelProps {
   onCoins?: () => void // starlight was just earned
   ready?: boolean // saving is possible right now (logged in and loaded)
   archive?: (month: string) => Promise<Todo[]> // finished to-dos archived from that month ('YYYY-MM')
+  mail?: MailApi
 }
 
 const SERIF = "'Noto Serif KR', serif"
@@ -410,8 +412,8 @@ export function HuntPanel({ pet, name, accent, apply, notify, celebrate }: Panel
                   {m.boss && <span className="label-caps" style={{ fontSize: '0.46rem', letterSpacing: '0.22em', color: PINK }}>BOSS</span>}
                 </div>
                 <p style={{ fontSize: '0.7rem', fontFamily: SERIF, color: dim(0.5) }}>
-                  체력 {m.hp} · 공격 {m.atk} · 방어 {m.def}
-                  <span style={{ color: ratio >= 1 ? '#8FC7A0' : ratio >= 0.75 ? dim(0.6) : LOW }}> · 권장 전투력 {need}</span>
+                  <span className="whitespace-nowrap">체력 {m.hp} · 공격 {m.atk} · 방어 {m.def}</span>{' '}
+                  <span className="whitespace-nowrap" style={{ color: ratio >= 1 ? '#8FC7A0' : ratio >= 0.75 ? dim(0.6) : LOW }}>· 권장 {need}</span>
                 </p>
                 <p className="flex flex-wrap gap-x-2" style={{ fontSize: '0.68rem', fontFamily: SERIF, color: dim(0.35) }}>
                   <Affinity m={m} known={known} />
@@ -881,7 +883,7 @@ export function ForgePanel({ pet, apply, celebrate }: PanelProps) {
 const SHEET: StatKey[] = ['hp', 'mp', 'atk', 'def', 'crit', 'critd', 'drop', 'gold', 'coin', 'xp', 'haste', 'yield']
 const KINDS = [['food', '음식'], ['potion', '물약'], ['special', '별빛 상점 물건'], ['mat', '재료'], ['junk', '잡동사니']] as const
 
-export function BagPanel({ pet, name, accent, apply, celebrate }: PanelProps) {
+export function BagPanel({ pet, name, accent, apply, celebrate, mail }: PanelProps) {
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const st = statsOf(pet)
   const r = pet.rpg
@@ -978,6 +980,7 @@ export function BagPanel({ pet, name, accent, apply, celebrate }: PanelProps) {
                       {it?.meal && <span style={{ fontSize: '0.66rem', color: GOLD, marginLeft: 6 }}>{mealText(it.meal)}</span>}
                     </span>
                     <span className="flex gap-[6px] shrink-0">
+                      {mail && <Mini onClick={() => mail.compose(id)} title={`${mail.them}에게 선물`}>선물</Mini>}
                       {it?.food && <Mini onClick={() => { if (apply(p => doEat(p, id))) celebrate(it.kind === 'food' ? '냠' : '꿀꺽') }}>{it.kind === 'food' ? '먹이기' : '마시기'}</Mini>}
                       {(it?.sell ?? 0) > 0 && (
                         <>

@@ -28,6 +28,7 @@ export interface Routine {
   tier: number
   cat?: string
   time?: string
+  memo?: string
   days: number[] // weekdays, 0 = Sunday
   from: string // first day it applies
 }
@@ -358,6 +359,7 @@ export function sanitizePet(raw: unknown, now = Date.now()): Pet {
         }
         if (typeof o.cat === 'string') routine.cat = o.cat.slice(0, 40)
         if (typeof o.time === 'string' && TIME_RE.test(o.time)) routine.time = o.time
+        if (typeof o.memo === 'string' && o.memo) routine.memo = o.memo.slice(0, MAX_MEMO)
         return [routine]
       })
     : []
